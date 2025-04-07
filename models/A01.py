@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -10,9 +8,17 @@ from GEN3D import GEN3D
 
 class A01(GEN3D):
 
-    def __init__(self, root_folder, COORDINATES_FOLDER_PATH, model_name="architecture-A01", checkpoint="ckpt-15", nx=64, ny=64, nz=64, NX=64, NY=128, NZ=64, LX=np.pi, LZ=np.pi / 2,
-                 learning_rate=1e-4, flow_range=slice(0, 64)):
-        super().__init__(root_folder, COORDINATES_FOLDER_PATH, model_name, checkpoint, nx, ny, nz, NX, NY, NZ, LX, LZ, learning_rate, flow_range)
+    def __init__(self, model_name="A01", checkpoint="ckpt-15", prediction_area_x=64, prediction_area_y_start=0,
+                 prediction_area_y_end=64, prediction_area_z=64, channel_x_resolution=64, channel_y_resolution=128,
+                 channel_z_resolution=64, channel_x_length=np.pi,
+                 channel_z_length=np.pi / 2,
+                 learning_rate=1e-4):
+        super().__init__(model_name=model_name, checkpoint=checkpoint, prediction_area_x=prediction_area_x,
+                         prediction_area_y_start=prediction_area_y_start, prediction_area_y_end=prediction_area_y_end,
+                         prediction_area_z=prediction_area_z, channel_x_resolution=channel_x_resolution,
+                         channel_y_resolution=channel_y_resolution, channel_z_resolution=channel_z_resolution,
+                         channel_x_length=channel_x_length,
+                         channel_z_length=channel_z_length, learning_rate=learning_rate)
 
     def res_block_gen(self, model, kernal_size, filters, strides):
 
@@ -39,7 +45,8 @@ class A01(GEN3D):
 
     def generator(self):
 
-        inputs = keras.Input(shape=(self.nx, 1, self.nz, self.input_channels), name='wall-input')
+        inputs = keras.Input(shape=(self.prediction_area_x, 1, self.prediction_area_z, self.input_channels),
+                             name='wall-input')
 
         conv_1 = layers.Conv3D(filters=64, kernel_size=9, strides=1, activation='linear',
                                data_format='channels_last',
@@ -58,7 +65,7 @@ class A01(GEN3D):
 
         up_sampling = layers.Add()([prelu_1, conv_2])
 
-        for index in range(int(np.log2(self.ny))):
+        for index in range(int(np.log2(self.prediction_area_y))):
             up_sampling = self.up_sampling_block(up_sampling, 3, 256, 1)
 
         outputs = layers.Conv3D(filters=self.output_channels, kernel_size=9, strides=1, padding="same",
@@ -84,7 +91,9 @@ class A01(GEN3D):
 
         # Define input layer
 
-        inputs = keras.Input(shape=(self.nx, self.ny, self.nz, self.output_channels), name='flow-input')
+        inputs = keras.Input(
+            shape=(self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, self.output_channels),
+            name='flow-input')
 
         # Apply a convolutional layer
 
@@ -170,5 +179,5 @@ class A01(GEN3D):
 
 
 if __name__ == "__main__":
-    model = A01("../../../", "../../channel coordinates")
+    model = A01()
     model.test()

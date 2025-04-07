@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -9,16 +7,14 @@ from A01 import A01
 
 
 class A03(A01):
-    def __init__(self, root_folder, COORDINATES_FOLDER_PATH, model_name="architecture-A03", checkpoint="ckpt-16", nx=64, ny=64, nz=64, NX=64,
-                 NY=128, NZ=64, LX=np.pi, LZ=np.pi / 2,
-                 learning_rate=1e-4, flow_range=slice(0, 64)):
-        super().__init__(root_folder, COORDINATES_FOLDER_PATH, model_name, checkpoint, nx, ny, nz, NX, NY, NZ, LX, LZ,
-                         learning_rate, flow_range)
+    def __init__(self, model_name="A03", checkpoint="ckpt-16", learning_rate=1e-4):
+        super().__init__(model_name=model_name, checkpoint=checkpoint, learning_rate=learning_rate)
         self.BATCH_SIZE_PER_REPLICA = 4
         self.GLOBAL_BATCH_SIZE = 1
 
     def generator(self):
-        inputs = keras.Input(shape=(self.nx, 1, self.nz, self.input_channels), name='wall-input')
+        inputs = keras.Input(shape=(self.prediction_area_x, 1, self.prediction_area_z, self.input_channels),
+                             name='wall-input')
 
         conv_1 = layers.Conv3D(filters=64, kernel_size=9, strides=1, activation='linear', data_format='channels_last',
                                padding='same')(inputs)
@@ -34,7 +30,7 @@ class A03(A01):
 
             res_block = self.res_block_gen(res_block, 3, 64, 1)
 
-            if index == 6 or index == 12 or index == 18 or index == 24 or index == 30:
+            if index in [6, 12, 18, 24, 30]:
                 res_block = self.up_sampling_block(res_block, 3, 64, 1)
 
                 up_sampling_1 = layers.UpSampling3D(size=(1, 2, 1), data_format='channels_last')(up_sampling_1)
@@ -81,9 +77,10 @@ class A03(A01):
 
             loss = content_loss + 1e-3 * adversarial_loss
 
-            scale_loss = tf.reduce_sum(loss, axis=(1, 2, 3)) / self.GLOBAL_BATCH_SIZE / self.nx / self.ny / self.nz
+            scale_loss = tf.reduce_sum(loss, axis=(1, 2, 3)) / self.GLOBAL_BATCH_SIZE / self.prediction_area_x / self.prediction_area_y / self.prediction_area_z
 
             return scale_loss
+
         return generator_loss
 
     def discriminator_loss(self):
@@ -97,11 +94,14 @@ class A03(A01):
             total_loss = 0.5 * (real_loss + fake_loss)
 
             return tf.nn.compute_average_loss(total_loss, global_batch_size=self.GLOBAL_BATCH_SIZE)
+
         return discriminator_loss
 
 
 if __name__ == "__main__":
-    model = A03("../../../", "../../channel coordinates")
+    model = A03()
     model.test(1)
-    model.plot_results()
-    model.export_vti()
+    # model.plot_results()
+    # model.export_vts()
+    u, v, w = model.get_losses(10)
+    print(u, v, w)

@@ -1,24 +1,35 @@
+import bisect
+import os
 import re
 import sys
-import time
-import os
-import numpy as np
-import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
 
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-import tensorflow.keras.layers as layers
-
 import vtk
 from vtk.util import numpy_support
 
-from abc import ABC, abstractmethod
+from folder_locations import *
+from visualization.saving_file_names import *
+
 
 class GEN3D(ABC):
-    def __init__(self, root_folder, COORDINATES_FOLDER_PATH, model_name, checkpoint, nx, ny, nz, NX, NY, NZ, LX, LZ, learning_rate, flow_range, input_channels=3, output_channels=3,
-                 n_residual_blocks=32):
+    def __init__(self, model_name, checkpoint, prediction_area_x, prediction_area_y_start, prediction_area_y_end,
+                 prediction_area_z, channel_x_resolution, channel_y_resolution, channel_z_resolution, channel_x_length,
+                 channel_z_length, learning_rate, input_channels=3, output_channels=3,
+                 n_residual_blocks=32,
+                 COORDINATES_FOLDER_PATH=CHANNEL_COORDINATES_FOLDER,
+                 generated_data_folder=GENERATED_DATA_FOLDER, checkpoint_folder=CHECKPOINTS_FOLDER,
+                 tfrecords_folder=TFRECORDS_FOLDER):
+        self.tfrecords_folder = tfrecords_folder
+        self.checkpoint_folder = checkpoint_folder / model_name
+        self.checkpoint_folder.mkdir(parents=True, exist_ok=True)
+        self.generated_data_folder = generated_data_folder / model_name
+        self.generated_data_folder.mkdir(parents=True, exist_ok=True)
         self.x_target = None
-        self.y_predic = None
+        self.y_predict = None
         self.y_target = None
         self.error_w = None
         self.error_v = None
@@ -27,19 +38,18 @@ class GEN3D(ABC):
         self.channel_Y = None
         self.channel_X = None
         self.checkpoint = checkpoint
-        self.root_folder = root_folder
-        self.flow_range = flow_range
-        self.COORDINATES_FOLDER_PATH = COORDINATES_FOLDER_PATH
+        self.coordinates_folder = COORDINATES_FOLDER_PATH
         # N_ is for the channel simulation
         # n_ is for the predicted area
-        self.nx = nx
-        self.ny = ny
-        self.nz = nz
-        self.NX = NX
-        self.NY = NY
-        self.NZ = NZ
-        self.LX = LX
-        self.LZ = LZ
+        self.prediction_area_x = prediction_area_x
+        self.prediction_area_y_start = prediction_area_y_start
+        self.prediction_area_y_end = prediction_area_y_end
+        self.prediction_area_z = prediction_area_z
+        self.channel_x_resolution = channel_x_resolution
+        self.channel_y_resolution = channel_y_resolution
+        self.channel_z_resolution = channel_z_resolution
+        self.channel_x_length = channel_x_length
+        self.channel_z_length = channel_z_length
         self.learning_rate = learning_rate
         self.input_channels = input_channels
         self.output_channels = output_channels
@@ -72,16 +82,20 @@ class GEN3D(ABC):
     def discriminator_optimizer(self):
         return keras.optimizers.Adam(learning_rate=self.learning_rate)
 
+    @property
+    def prediction_area_y(self):
+        return self.prediction_area_y_end - self.prediction_area_y_start
+
     def read_channel_mesh_bin(self):
-        self.channel_X = np.arange(self.NX) * self.LX / self.NX
-        self.channel_Z = np.arange(self.NZ) * self.LZ / self.NZ
+        self.channel_X = np.arange(self.channel_x_resolution) * self.channel_x_length / self.channel_x_resolution
+        self.channel_Z = np.arange(self.channel_z_resolution) * self.channel_z_length / self.channel_z_resolution
         try:
-            self.channel_Y = np.load(f'{self.COORDINATES_FOLDER_PATH}/coordY.npy')
+            self.channel_Y = np.load(self.coordinates_folder / "coordY.npy")
         except FileNotFoundError:
             print("CoordY.npy not found, visualizations might be disabled.", file=sys.stderr)
 
     @tf.function
-    def tf_parser(self, rec, root_folder):
+    def tf_parser(self, rec):
         features = {
             'i_sample': tf.io.FixedLenFeature([], tf.int64),
             'nx': tf.io.FixedLenFeature([], tf.int64),
@@ -109,7 +123,7 @@ class GEN3D(ABC):
         ny = tf.cast(parsed_rec['ny'], tf.int32)
         nz = tf.cast(parsed_rec['nz'], tf.int32)
 
-        filename = f"{root_folder}tfrecords/scaling.npz"
+        filename = os.path.join(self.tfrecords_folder, "scaling.npz")
 
         # Load mean velocity values in the streamwise and wall-normal directions for low- and high-resolution data
 
@@ -146,12 +160,12 @@ class GEN3D(ABC):
         wall = tf.concat((wall, (tf.reshape(parsed_rec['raw_tx'], (nx, 1, nz, 1)) - TBX_mean) / TBX_std), -1)
         wall = tf.concat((wall, (tf.reshape(parsed_rec['raw_tz'], (nx, 1, nz, 1)) - TBZ_mean) / TBZ_std), -1)
 
-        return wall, flow[:, self.flow_range, :, :]
+        return wall, flow[:, self.prediction_area_y_start:self.prediction_area_y_end, :, :]
 
-    def generate_pipeline_training(self, root_folder, validation_split=1, shuffle_buffer=200, batch_size=4,
+    def generate_pipeline_training(self, validation_split=1, shuffle_buffer=200, batch_size=4,
                                    n_prefetch=4):
 
-        tfr_path = f"{root_folder}tfrecords/test/"
+        tfr_path = self.tfrecords_folder / "test"
         tfr_files = sorted(
             [os.path.join(tfr_path, f) for f in os.listdir(tfr_path) if os.path.isfile(os.path.join(tfr_path, f))])
         regex = re.compile(f'.tfrecords')
@@ -241,7 +255,7 @@ class GEN3D(ABC):
         # dataset_train = dataset_train.batch(batch_size=batch_size)
         # dataset_train = dataset_train.prefetch(n_prefetch)
 
-        dataset_valid = tfr_files_val_ds.map(lambda x: self.tf_parser(x, root_folder),
+        dataset_valid = tfr_files_val_ds.map(lambda x: self.tf_parser(x),
                                              num_parallel_calls=tf.data.experimental.AUTOTUNE)
         dataset_valid = dataset_valid.shuffle(shuffle_buffer)
         dataset_valid = dataset_valid.batch(batch_size=batch_size)
@@ -261,7 +275,7 @@ class GEN3D(ABC):
             except RuntimeError as e:
                 print(e)
 
-        dataset_valid = self.generate_pipeline_training(self.root_folder, batch_size=1)
+        dataset_valid = self.generate_pipeline_training(batch_size=1)
 
         generator = self.generator()
         discriminator = self.discriminator()
@@ -269,12 +283,6 @@ class GEN3D(ABC):
         discriminator_loss = self.discriminator_loss()
         generator_optimizer = self.generator_optimizer()
         discriminator_optimizer = self.discriminator_optimizer()
-
-        checkpoint_dir = f"{self.root_folder}models/checkpoints_{self.model_name}"
-
-        # Define checkpoint prefix
-
-        checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 
         # Generate checkpoint object to track the generator and discriminator architectures and optimizers
 
@@ -286,14 +294,16 @@ class GEN3D(ABC):
         )
 
         # checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
-        ckpt_file = f"{self.root_folder}/models/checkpoints_{self.model_name}/{self.checkpoint}"
+        ckpt_file = self.checkpoint_folder / self.checkpoint
         checkpoint.restore(ckpt_file).expect_partial()
 
         # samples, stream wise resolution, wall normal wise resolution, span wise resolution, velocities.
         # velocities -> 0, u, stream wise | 1, v, wall normal wise | 2, w, spawn wise
-        self.x_target = np.zeros((test_sample_amount, self.nx, 1, self.nz, 3), np.float32)
-        self.y_target = np.zeros((test_sample_amount, self.nx, self.ny, self.nz, 3), np.float32)
-        self.y_predic = np.zeros((test_sample_amount, self.nx, self.ny, self.nz, 3), np.float32)
+        self.x_target = np.zeros((test_sample_amount, self.prediction_area_x, 1, self.prediction_area_z, 3), np.float32)
+        self.y_target = np.zeros(
+            (test_sample_amount, self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, 3), np.float32)
+        self.y_predict = np.zeros(
+            (test_sample_amount, self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, 3), np.float32)
 
         itr = iter(dataset_valid)
         try:
@@ -306,25 +316,47 @@ class GEN3D(ABC):
                 self.x_target[idx] = x.numpy()
                 self.y_target[idx] = y.numpy()
 
-                self.y_predic[idx] = generator(np.expand_dims(self.x_target[idx], axis=0), training=False)
+                self.y_predict[idx] = generator(np.expand_dims(self.x_target[idx], axis=0), training=False)
         except Exception as e:
             print(e)
 
         self.read_channel_mesh_bin()
 
         print(f'Target mean: {np.mean(self.y_target)}, std: {np.std(self.y_target)}')
-        print(f'Predic mean: {np.mean(self.y_predic)}, std: {np.std(self.y_predic)}')
+        print(f'Predict mean: {np.mean(self.y_predict)}, std: {np.std(self.y_predict)}')
 
     def ensure_prediction(self):
-        if self.y_target is None or self.y_predic is None or self.x_target is None:
+        if self.y_target is None or self.y_predict is None or self.x_target is None:
             print("Target and prediction not computed, please predict something first", file=sys.stderr)
             raise GEN3D.NoPredictionsException()
 
     def compute_errors(self):
         self.ensure_prediction()
-        self.error_v = np.mean((self.y_target[:, :, :, :, 1] - self.y_predic[:, :, :, :, 1]) ** 2, axis=(0, 1, 3))
-        self.error_w = np.mean((self.y_target[:, :, :, :, 2] - self.y_predic[:, :, :, :, 2]) ** 2, axis=(0, 1, 3))
-        self.error_u = np.mean((self.y_target[:, :, :, :, 0] - self.y_predic[:, :, :, :, 0]) ** 2, axis=(0, 1, 3))
+        self.error_u = np.mean((self.y_target[:, :, :, :, 0] - self.y_predict[:, :, :, :, 0]) ** 2, axis=(0, 1, 3))
+        self.error_v = np.mean((self.y_target[:, :, :, :, 1] - self.y_predict[:, :, :, :, 1]) ** 2, axis=(0, 1, 3))
+        self.error_w = np.mean((self.y_target[:, :, :, :, 2] - self.y_predict[:, :, :, :, 2]) ** 2, axis=(0, 1, 3))
+
+    @property
+    def prediction_channel_y(self):
+        return self.channel_Y[self.prediction_area_y_start:self.prediction_area_y_end]
+
+    def _percentage_to_y_plus_distance(self, percent):
+        max_distance = max(self.prediction_channel_y)
+        return percent * max_distance / 100
+
+    def get_losses(self, percent):
+        self.ensure_prediction()
+        if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
+            print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
+
+        y_plus = self._percentage_to_y_plus_distance(percent)
+        y_index = bisect.bisect_right(self.prediction_channel_y, y_plus)
+
+        error_u = np.mean((self.y_target[:, :, y_index, :, 0] - self.y_predict[:, :, y_index, :, 0]) ** 2)
+        error_v = np.mean((self.y_target[:, :, y_index, :, 1] - self.y_predict[:, :, y_index, :, 1]) ** 2)
+        error_w = np.mean((self.y_target[:, :, y_index, :, 2] - self.y_predict[:, :, y_index, :, 2]) ** 2)
+
+        return error_u, error_v, error_w
 
     def plot_results(self, error_fig_name="error.png", contour_fig_name="prediction.png"):
         if self.error_u is None or self.error_v is None or self.error_w is None:
@@ -336,15 +368,15 @@ class GEN3D(ABC):
         if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
             print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
         plt.rc('font', size=15)
-        plt.semilogx(200 * self.channel_Y[1:self.ny], self.error_u[1:], label='MSE U')
-        plt.semilogx(200 * self.channel_Y[1:self.ny], self.error_v[1:], label='MSE V')
-        plt.semilogx(200 * self.channel_Y[1:self.ny], self.error_w[1:], label='MSE W')
+        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.error_u[1:], label='MSE U')
+        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.error_v[1:], label='MSE V')
+        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.error_w[1:], label='MSE W')
         plt.xlim([1, 200])
         plt.ylim([0, 1])
         plt.legend()
         plt.grid()
         plt.grid(which='minor', linestyle='--')
-        plt.savefig(error_fig_name)
+        plt.savefig(self.generated_data_folder / error_fig_name)
         plt.clf()
         rows = 2
         cols = 3
@@ -354,12 +386,18 @@ class GEN3D(ABC):
         fig_width = fig_width_pt * inches_per_pt
         fig_height = fig_width * rows / cols * ratio
         fig, axs = plt.subplots(rows, cols, figsize=(fig_width, fig_height), squeeze=False)
-        axs[0, 0].contourf(self.channel_X, self.channel_Z, self.y_target[0, :, 22, :, 0].T, vmin=-3, vmax=3, cmap='RdBu_r')
-        axs[1, 0].contourf(self.channel_X, self.channel_Z, self.y_predic[0, :, 22, :, 0].T, vmin=-3, vmax=3, cmap='RdBu_r')
-        axs[0, 1].contourf(self.channel_X, self.channel_Z, self.y_target[0, :, 22, :, 1].T, vmin=-3, vmax=3, cmap='PuOr_r')
-        axs[1, 1].contourf(self.channel_X, self.channel_Z, self.y_predic[0, :, 22, :, 1].T, vmin=-3, vmax=3, cmap='PuOr_r')
-        axs[0, 2].contourf(self.channel_X, self.channel_Z, self.y_target[0, :, 22, :, 2].T, vmin=-3, vmax=3, cmap='PiYG_r')
-        axs[1, 2].contourf(self.channel_X, self.channel_Z, self.y_predic[0, :, 22, :, 2].T, vmin=-3, vmax=3, cmap='PiYG_r')
+        axs[0, 0].contourf(self.channel_X, self.channel_Z, self.y_target[0, :, 22, :, 0].T, vmin=-3, vmax=3,
+                           cmap='RdBu_r')
+        axs[1, 0].contourf(self.channel_X, self.channel_Z, self.y_predict[0, :, 22, :, 0].T, vmin=-3, vmax=3,
+                           cmap='RdBu_r')
+        axs[0, 1].contourf(self.channel_X, self.channel_Z, self.y_target[0, :, 22, :, 1].T, vmin=-3, vmax=3,
+                           cmap='PuOr_r')
+        axs[1, 1].contourf(self.channel_X, self.channel_Z, self.y_predict[0, :, 22, :, 1].T, vmin=-3, vmax=3,
+                           cmap='PuOr_r')
+        axs[0, 2].contourf(self.channel_X, self.channel_Z, self.y_target[0, :, 22, :, 2].T, vmin=-3, vmax=3,
+                           cmap='PiYG_r')
+        axs[1, 2].contourf(self.channel_X, self.channel_Z, self.y_predict[0, :, 22, :, 2].T, vmin=-3, vmax=3,
+                           cmap='PiYG_r')
         axs[0, 0].set_xlim([0, np.pi])
         axs[0, 0].set_ylim([0, np.pi / 2])
         axs[0, 1].set_xlim([0, np.pi])
@@ -372,36 +410,41 @@ class GEN3D(ABC):
         axs[1, 1].set_ylim([0, np.pi / 2])
         axs[1, 2].set_xlim([0, np.pi])
         axs[1, 2].set_ylim([0, np.pi / 2])
-        fig.savefig(contour_fig_name)
+        fig.savefig(self.generated_data_folder / contour_fig_name)
 
-    def export_vti(self):
+    # WARNING : Correct type here should be rectilinear grid
+    # but for some reason my Paraview couldn't display it as a Volume, So I use StructuredGrid
+    # If you want to try with rectilinear, add an export_vtr function or something alike.
+    def export_vts(self):
         try:
             self.ensure_prediction()
         except GEN3D.NoPredictionsException:
             return
 
+        self._export_array_vts(self.y_target[0], TARGET_FILE_NAME, TARGET_ARRAY_NAME)
+        self._export_array_vts(self.y_predict[0], PREDICTION_FILE_NAME, PREDICTION_ARRAY_NAME)
 
-        export_target = self.y_target[0]
+    # File name with no extension
+    def _export_array_vts(self, target, file_name, array_name=None):
+        if array_name is None:
+            array_name = file_name
+        structured_grid = vtk.vtkStructuredGrid()
         points = vtk.vtkPoints()
-        for k in range(self.nz):
-            for j in range(self.ny):
-                for i in range(self.nx):
+        for k in range(self.prediction_area_z):
+            for j in range(self.prediction_area_y):
+                for i in range(self.prediction_area_x):
                     points.InsertNextPoint(self.channel_X[i], self.channel_Y[j], self.channel_Z[k])
-        grid = vtk.vtkRectilinearGrid()
-        grid.SetDimensions(self.nx, self.ny, self.nz)
-        grid.SetXCoordinates(numpy_support.numpy_to_vtk(self.channel_X))
-        grid.SetYCoordinates(numpy_support.numpy_to_vtk(self.channel_Y))
-        grid.SetZCoordinates(numpy_support.numpy_to_vtk(self.channel_Z))
 
-        velocity_array = numpy_support.numpy_to_vtk(num_array=export_target.reshape(-1, 3), deep=True, array_type=vtk.VTK_FLOAT)
-        velocity_array.SetName('velocity')
+        structured_grid.SetPoints(points)
+        structured_grid.SetDimensions(self.prediction_area_x, self.prediction_area_y, self.prediction_area_z)
 
-        grid.GetPointData().AddArray(velocity_array)
+        velocity_array = numpy_support.numpy_to_vtk(num_array=target.reshape(-1, 3), deep=True,
+                                                    array_type=vtk.VTK_FLOAT)
+        velocity_array.SetName(array_name)
 
+        structured_grid.GetPointData().AddArray(velocity_array)
 
-        writer = vtk.vtkXMLRectilinearGridWriter()
-        writer.SetFileName("target_velocity_field.vti")
-        writer.SetInputData(grid)
+        writer = vtk.vtkXMLStructuredGridWriter()
+        writer.SetFileName(self.generated_data_folder / file_name)
+        writer.SetInputData(structured_grid)
         writer.Write()
-
-
