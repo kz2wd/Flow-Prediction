@@ -118,7 +118,7 @@ class GEN3D(ABC):
         parsed_rec = tf.io.parse_single_example(rec, features)
 
         i_smp = tf.cast(parsed_rec['i_sample'], tf.int32)
-
+        print(f"SAMPLE NUMBER ({i_smp})")
         nx = tf.cast(parsed_rec['nx'], tf.int32)
         ny = tf.cast(parsed_rec['ny'], tf.int32)
         nz = tf.cast(parsed_rec['nz'], tf.int32)
@@ -257,7 +257,7 @@ class GEN3D(ABC):
 
         dataset_valid = tfr_files_val_ds.map(lambda x: self.tf_parser(x),
                                              num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        dataset_valid = dataset_valid.shuffle(shuffle_buffer)
+        # dataset_valid = dataset_valid.shuffle(shuffle_buffer)
         dataset_valid = dataset_valid.batch(batch_size=batch_size)
         dataset_valid = dataset_valid.prefetch(n_prefetch)
 
@@ -335,6 +335,29 @@ class GEN3D(ABC):
         self.error_u = np.mean((self.y_target[:, :, :, :, 0] - self.y_predict[:, :, :, :, 0]) ** 2, axis=(0, 1, 3))
         self.error_v = np.mean((self.y_target[:, :, :, :, 1] - self.y_predict[:, :, :, :, 1]) ** 2, axis=(0, 1, 3))
         self.error_w = np.mean((self.y_target[:, :, :, :, 2] - self.y_predict[:, :, :, :, 2]) ** 2, axis=(0, 1, 3))
+
+    def save_prediction(self):
+        self.ensure_prediction()
+        np.save(self.generated_data_folder / "target_x.npy", self.x_target)
+        np.save(self.generated_data_folder / "target_y.npy", self.y_target)
+        np.save(self.generated_data_folder / "predict_y.npy", self.y_predict)
+
+    def load_prediction(self):
+        self.x_target = np.load(self.generated_data_folder / "target_x.npy")
+        self.y_target = np.load(self.generated_data_folder / "target_y.npy")
+        self.y_predict = np.load(self.generated_data_folder / "predict_y.npy")
+
+
+    def lazy_predict(self, at_least=1):
+        try:
+            self.load_prediction()
+            if len(self.y_predict) < at_least:
+                raise OSError  # hehehe naughty code
+        except OSError as _:
+            self.test(at_least)
+            self.save_prediction()
+        self.read_channel_mesh_bin()
+
 
     @property
     def prediction_channel_y(self):

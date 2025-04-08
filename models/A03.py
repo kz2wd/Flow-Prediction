@@ -77,7 +77,8 @@ class A03(A01):
 
             loss = content_loss + 1e-3 * adversarial_loss
 
-            scale_loss = tf.reduce_sum(loss, axis=(1, 2, 3)) / self.GLOBAL_BATCH_SIZE / self.prediction_area_x / self.prediction_area_y / self.prediction_area_z
+            scale_loss = tf.reduce_sum(loss, axis=(1, 2,
+                                                   3)) / self.GLOBAL_BATCH_SIZE / self.prediction_area_x / self.prediction_area_y / self.prediction_area_z
 
             return scale_loss
 
@@ -100,8 +101,8 @@ class A03(A01):
 
 if __name__ == "__main__":
     model = A03()
-    model.test(1)
+    model.lazy_predict(at_least=25)
     # model.plot_results()
     # model.export_vts()
-    u, v, w = model.get_losses(10)
+    u, v, w = model.get_losses(5)
     print(u, v, w)
