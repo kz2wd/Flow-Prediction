@@ -3,12 +3,13 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
 
-from A01 import A01
+from models.A01 import A01
 
 
 class A03(A01):
-    def __init__(self, model_name="A03", checkpoint="ckpt-16", learning_rate=1e-4):
-        super().__init__(model_name=model_name, checkpoint=checkpoint, learning_rate=learning_rate)
+    def __init__(self, model_name="A03", checkpoint="ckpt-16", learning_rate=1e-4, in_legend_name=None):
+        super().__init__(model_name=model_name, checkpoint=checkpoint, learning_rate=learning_rate,
+                         in_legend_name=in_legend_name)
         self.BATCH_SIZE_PER_REPLICA = 4
         self.GLOBAL_BATCH_SIZE = 1
 
@@ -102,4 +103,6 @@ class A03(A01):
 if __name__ == "__main__":
     model = A03()
     model.lazy_predict(at_least=25)
-    model.plot_wall_normal_profiles()
+    # model.replace_prediction_with_zeros()
+    model.replace_prediction_with_noise()
+    print(model.get_losses(15))

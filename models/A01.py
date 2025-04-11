@@ -3,7 +3,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
 
-from GEN3D import GEN3D
+from models.GEN3D import GEN3D
 
 
 class A01(GEN3D):
@@ -12,13 +12,13 @@ class A01(GEN3D):
                  prediction_area_y_end=64, prediction_area_z=64, channel_x_resolution=64, channel_y_resolution=128,
                  channel_z_resolution=64, channel_x_length=np.pi,
                  channel_z_length=np.pi / 2,
-                 learning_rate=1e-4):
+                 learning_rate=1e-4, in_legend_name=None):
         super().__init__(model_name=model_name, checkpoint=checkpoint, prediction_area_x=prediction_area_x,
                          prediction_area_y_start=prediction_area_y_start, prediction_area_y_end=prediction_area_y_end,
                          prediction_area_z=prediction_area_z, channel_x_resolution=channel_x_resolution,
                          channel_y_resolution=channel_y_resolution, channel_z_resolution=channel_z_resolution,
                          channel_x_length=channel_x_length,
-                         channel_z_length=channel_z_length, learning_rate=learning_rate)
+                         channel_z_length=channel_z_length, learning_rate=learning_rate, in_legend_name=in_legend_name)
 
     def res_block_gen(self, model, kernal_size, filters, strides):
 

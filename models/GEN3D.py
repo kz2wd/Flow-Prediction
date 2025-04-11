@@ -22,7 +22,14 @@ class GEN3D(ABC):
                  n_residual_blocks=32,
                  COORDINATES_FOLDER_PATH=CHANNEL_COORDINATES_FOLDER,
                  generated_data_folder=GENERATED_DATA_FOLDER, checkpoint_folder=CHECKPOINTS_FOLDER,
-                 tfrecords_folder=TFRECORDS_FOLDER):
+                 tfrecords_folder=TFRECORDS_FOLDER, in_legend_name=None):
+
+        if in_legend_name is None:
+            self.in_legend_name = model_name
+        else:
+            self.in_legend_name = in_legend_name
+        self._y_target_original = None
+        self._y_predict_original = None
         self.TBZ_std = None
         self.TBX_std = None
         self.PB_std = None
@@ -89,35 +96,57 @@ class GEN3D(ABC):
         self.read_scaling()
 
     def tmp(self):
-        plt.semilogx(self.prediction_channel_y[1:] * 200, self.U_mean.reshape(-1)[1:] * 100 / 3)
+        plt.semilogx(self.prediction_channel_y[1:] * 200, self.U_mean.reshape(-1)[1:] * self.data_scaling)
         plt.xlim([0, 200])
         plt.grid()
         plt.grid(which='minor', linestyle='--')
         plt.show()
         plt.plot(self.prediction_channel_y[1:] * 200, self.U_std.reshape(-1)[1:] * self.data_scaling)
-        plt.plot(self.prediction_channel_y[1:] * 200, self.V_std.reshape(-1)[1:] * 100 / 3)
-        plt.plot(self.prediction_channel_y[1:] * 200, self.W_std.reshape(-1)[1:] * 100 / 3)
+        plt.plot(self.prediction_channel_y[1:] * 200, self.V_std.reshape(-1)[1:] * self.data_scaling)
+        plt.plot(self.prediction_channel_y[1:] * 200, self.W_std.reshape(-1)[1:] * self.data_scaling)
         plt.grid()
         plt.grid(which='minor', linestyle='--')
         plt.show()
 
     def _to_original(self, target):
-        original_u = (target[..., 0] * self.U_std + self.U_mean) * self.data_scaling
-        original_v = (target[..., 1] * self.V_std + self.V_mean) * self.data_scaling
-        original_w = (target[..., 2] * self.W_std + self.W_mean) * self.data_scaling
-        return tf.stack([original_u, original_v, original_w], axis=-1)
+        # This function was made by hand and refactored by chatgpt because of my skill issues regarding numpy knowledge
+        # enjoy this nice form
+
+        _, _, Y, _, _ = target.shape
+
+        # Reshape means and stds to broadcast correctly over the Y axis
+        U_std = self.U_std.reshape(1, 1, Y, 1, 1)
+        V_std = self.V_std.reshape(1, 1, Y, 1, 1)
+        W_std = self.W_std.reshape(1, 1, Y, 1, 1)
+
+        U_mean = self.U_mean.reshape(1, 1, Y, 1, 1)
+        V_mean = self.V_mean.reshape(1, 1, Y, 1, 1)
+        W_mean = self.W_mean.reshape(1, 1, Y, 1, 1)
+
+        original = target.copy()
+
+        # Apply transformation vectorially
+        original[..., 0] = (target[..., 0] * U_std[..., 0] + U_mean[..., 0]) * self.data_scaling
+        original[..., 1] = (target[..., 1] * V_std[..., 0] + V_mean[..., 0]) * self.data_scaling
+        original[..., 2] = (target[..., 2] * W_std[..., 0] + W_mean[..., 0]) * self.data_scaling
+
+        return original
 
     @property
     def y_target_original(self):
         if self.y_target_normalized is None:
             return None
-        return self._to_original(self.y_target_normalized)
+        if self._y_target_original is None:
+            self._y_target_original = self._to_original(self.y_target_normalized)
+        return self._y_target_original
 
     @property
     def y_predict_original(self):
         if self.y_predict_normalized is None:
             return None
-        return self._to_original(self.y_predict_normalized)
+        if self._y_predict_original is None:
+            self._y_predict_original = self._to_original(self.y_predict_normalized)
+        return self._y_predict_original
 
     def read_scaling(self):
         filename = self.tfrecords_folder / "scaling.npz"
@@ -128,6 +157,7 @@ class GEN3D(ABC):
             self.V_mean = np.expand_dims(f['V_mean'], axis=-1)[:, :64, :, :]
             self.W_mean = np.expand_dims(f['W_mean'], axis=-1)[:, :64, :, :]
             self.PB_mean = np.expand_dims(f['PB_mean'], axis=-1)
+
             # PT_mean = np.expand_dims(np.load(filename)['PT_mean'], axis=-1)
             self.TBX_mean = np.expand_dims(f['TBX_mean'], axis=-1)
             self.TBZ_mean = np.expand_dims(f['TBZ_mean'], axis=-1)
@@ -191,7 +221,6 @@ class GEN3D(ABC):
         nx = tf.cast(parsed_rec['nx'], tf.int32)
         ny = tf.cast(parsed_rec['ny'], tf.int32)
         nz = tf.cast(parsed_rec['nz'], tf.int32)
-
 
         # Reshape data into 2-dimensional matrix, substract mean value and divide by the standard deviation. Concatenate the streamwise and wall-normal velocities along the third dimension
 
@@ -308,6 +337,12 @@ class GEN3D(ABC):
 
         return dataset_valid  # dataset_train, dataset_valid
 
+    def replace_prediction_with_zeros(self):
+        self.y_predict_normalized[...] = 0
+
+    def replace_prediction_with_noise(self):
+        self.y_predict_normalized = np.random.default_rng().uniform(-1, 1, self.y_predict_normalized.shape)
+
     def test(self, test_sample_amount=50):
         physical_devices = tf.config.list_physical_devices('GPU')
         available_GPUs = len(physical_devices)
@@ -344,24 +379,24 @@ class GEN3D(ABC):
 
         # samples, stream wise resolution, wall normal wise resolution, span wise resolution, velocities.
         # velocities -> 0, u, stream wise | 1, v, wall normal wise | 2, w, spawn wise
-        self.x_target_normalized = np.zeros((test_sample_amount, self.prediction_area_x, 1, self.prediction_area_z, 3), np.float32)
-        self.y_target_normalized = np.zeros(
-            (test_sample_amount, self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, 3), np.float32)
-        self.y_predict_normalized = np.zeros(
-            (test_sample_amount, self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, 3), np.float32)
+        self.x_target_normalized = np.zeros((test_sample_amount, self.prediction_area_x, 1, self.prediction_area_z, 3),
+                                            np.float32)
+
+        self.load_empty_data(test_sample_amount)
 
         itr = iter(dataset_valid)
         try:
-            for idx in range(test_sample_amount):
-                if float.is_integer(idx / 50):
-                    print(idx)
+            for i in range(test_sample_amount):
+                if float.is_integer(i / 50):
+                    print(i)
                 # print(idx)
                 x, y = next(itr)
 
-                self.x_target_normalized[idx] = x.numpy()
-                self.y_target_normalized[idx] = y.numpy()
+                self.x_target_normalized[i] = x.numpy()
+                self.y_target_normalized[i] = y.numpy()
 
-                self.y_predict_normalized[idx] = generator(np.expand_dims(self.x_target_normalized[idx], axis=0), training=False)
+                self.y_predict_normalized[i] = generator(np.expand_dims(self.x_target_normalized[i], axis=0),
+                                                         training=False)
         except Exception as e:
             print(e)
 
@@ -377,9 +412,12 @@ class GEN3D(ABC):
 
     def compute_errors(self):
         self.ensure_prediction()
-        self.error_u = np.mean((self.y_target_original[:, :, :, :, 0] - self.y_predict_original[:, :, :, :, 0]) ** 2, axis=(0, 1, 3))
-        self.error_v = np.mean((self.y_target_original[:, :, :, :, 1] - self.y_predict_original[:, :, :, :, 1]) ** 2, axis=(0, 1, 3))
-        self.error_w = np.mean((self.y_target_original[:, :, :, :, 2] - self.y_predict_original[:, :, :, :, 2]) ** 2, axis=(0, 1, 3))
+        self.error_u = np.mean((self.y_target_original[:, :, :, :, 0] - self.y_predict_original[:, :, :, :, 0]) ** 2,
+                               axis=(0, 1, 3))
+        self.error_v = np.mean((self.y_target_original[:, :, :, :, 1] - self.y_predict_original[:, :, :, :, 1]) ** 2,
+                               axis=(0, 1, 3))
+        self.error_w = np.mean((self.y_target_original[:, :, :, :, 2] - self.y_predict_original[:, :, :, :, 2]) ** 2,
+                               axis=(0, 1, 3))
 
     def save_prediction(self):
         self.ensure_prediction()
@@ -404,8 +442,9 @@ class GEN3D(ABC):
 
     @property
     def prediction_channel_y(self):
+        if self.channel_Y is None:
+            self.read_channel_mesh_bin()
         return self.channel_Y[self.prediction_area_y_start:self.prediction_area_y_end]
-
 
     def get_losses(self, y_plus):
         self.compute_errors()
@@ -420,14 +459,23 @@ class GEN3D(ABC):
 
         return error_u, error_v, error_w
 
+    def load_empty_data(self, test_sample_amount):
+        self.y_target_normalized = np.zeros(
+            (test_sample_amount, self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, 3), np.float32)
+        self.y_predict_normalized = np.zeros(
+            (test_sample_amount, self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, 3), np.float32)
+
     def plot_wall_normal_profiles(self, figure_name="stream_wise_profiles.png"):
         if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
             print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
         plt.rc('font', size=15)
-        plt.semilogx(200 * self.prediction_channel_y,
-                     np.mean(self.y_predict_original[:, :, :, :, 0], axis=(0, 1, 3)), label='predicted velocity')
-        plt.semilogx(200 * self.prediction_channel_y,
-                     np.mean(self.y_target_original[:, :, :, :, 0], axis=(0, 1, 3)), label='target velocity')
+        plt.semilogx(200 * self.prediction_channel_y[1:],
+                     np.mean(self.y_predict_original[:, :, 1:, :, 0], axis=(0, 1, 3)), label='predicted velocity')
+        plt.semilogx(200 * self.prediction_channel_y[1:],
+                     np.mean(self.y_target_original[:, :, 1:, :, 0], axis=(0, 1, 3)), label='target velocity')
+
+        plt.semilogx(200 * self.prediction_channel_y[1:], self.U_mean.reshape(-1)[1:] * self.data_scaling,
+                     label='average velocity')
         # plt.xlim([1, 200])
         # plt.ylim([0, 1])
         plt.legend()
@@ -498,8 +546,8 @@ class GEN3D(ABC):
         except GEN3D.NoPredictionsException:
             return
 
-        self._export_array_vts(self.y_target_normalized[0], TARGET_FILE_NAME, TARGET_ARRAY_NAME)
-        self._export_array_vts(self.y_predict_normalized[0], PREDICTION_FILE_NAME, PREDICTION_ARRAY_NAME)
+        self._export_array_vts(self.y_target_original[0], TARGET_FILE_NAME, TARGET_ARRAY_NAME)
+        self._export_array_vts(self.y_predict_original[0], PREDICTION_FILE_NAME, PREDICTION_ARRAY_NAME)
 
     # File name with no extension
     def _export_array_vts(self, target, file_name, array_name=None):
