@@ -102,7 +102,4 @@ class A03(A01):
 if __name__ == "__main__":
     model = A03()
     model.lazy_predict(at_least=25)
-    # model.plot_results()
-    # model.export_vts()
-    u, v, w = model.get_losses(5)
-    print(u, v, w)
+    model.plot_wall_normal_profiles()
