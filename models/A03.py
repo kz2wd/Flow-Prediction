@@ -103,6 +103,4 @@ class A03(A01):
 if __name__ == "__main__":
     model = A03()
     model.lazy_predict(at_least=25)
-    # model.replace_prediction_with_zeros()
-    model.replace_prediction_with_noise()
-    print(model.get_losses(15))
+    model.plot_wall_normal_profiles()

@@ -69,21 +69,26 @@ def create_volume_actor(input_data):
     mapper.SetInputConnection(resampler.GetOutputPort())
 
     opacity = vtk.vtkPiecewiseFunction()
-    opacity.AddPoint(0.0, 0.0)
-    opacity.AddPoint(1.0, 0.1)
-    opacity.AddPoint(5.0, 0.5)
-    opacity.AddPoint(10.0, 1.0)
 
     color = vtk.vtkColorTransferFunction()
     color.SetColorSpaceToHSV()
     if isinstance(input_data, vtkStructuredGrid):
+        color.AddHSVPoint(0.0, 0.8, 1.0, 1.0)
+        color.AddHSVPoint(10, 0.667, 1.0, 1.0)  # Blue
+        color.AddHSVPoint(15.0, 0.333, 1.0, 1.0)  # Green
+        color.AddHSVPoint(20.0, 0.0, 1.0, 1.0)   # Red
+
+        opacity.AddPoint(0.0, 0.3)
+        opacity.AddPoint(1.0, 0.1)
+        opacity.AddPoint(20.0, 0.95)
+
+    else:
         color.AddHSVPoint(0.0, 0.667, 1.0, 1.0)  # Blue
         color.AddHSVPoint(5.0, 0.333, 1.0, 1.0)  # Green
-        color.AddHSVPoint(10.0, 0.0, 1.0, 1.0)   # Red
-    else:
-        color.AddHSVPoint(0.0, 0.2, 1.0, 1.0)  # Blue
-        color.AddHSVPoint(5.0, 0.1, 1.0, 1.0)  # Green
-        color.AddHSVPoint(10.0, 0.0, 1.0, 1.0)  # Red
+        color.AddHSVPoint(8.0, 0.0, 1.0, 1.0)  # Red
+
+        opacity.AddPoint(0.0, 0.0)
+        opacity.AddPoint(8.0, 0.95)
 
     prop = vtk.vtkVolumeProperty()
     prop.SetColor(color)

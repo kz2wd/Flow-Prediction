@@ -50,9 +50,12 @@ class GEN3D(ABC):
         self.x_target_normalized = None
         self.y_predict_normalized = None
         self.y_target_normalized = None
-        self.error_w = None
-        self.error_v = None
-        self.error_u = None
+        self.network_error_w = None
+        self.network_error_v = None
+        self.network_error_u = None
+        self.real_error_u = None
+        self.real_error_v = None
+        self.real_error_w = None
         self.channel_Z = None
         self.channel_Y = None
         self.channel_X = None
@@ -94,19 +97,6 @@ class GEN3D(ABC):
         }
 
         self.read_scaling()
-
-    def tmp(self):
-        plt.semilogx(self.prediction_channel_y[1:] * 200, self.U_mean.reshape(-1)[1:] * self.data_scaling)
-        plt.xlim([0, 200])
-        plt.grid()
-        plt.grid(which='minor', linestyle='--')
-        plt.show()
-        plt.plot(self.prediction_channel_y[1:] * 200, self.U_std.reshape(-1)[1:] * self.data_scaling)
-        plt.plot(self.prediction_channel_y[1:] * 200, self.V_std.reshape(-1)[1:] * self.data_scaling)
-        plt.plot(self.prediction_channel_y[1:] * 200, self.W_std.reshape(-1)[1:] * self.data_scaling)
-        plt.grid()
-        plt.grid(which='minor', linestyle='--')
-        plt.show()
 
     def _to_original(self, target):
         # This function was made by hand and refactored by chatgpt because of my skill issues regarding numpy knowledge
@@ -412,12 +402,15 @@ class GEN3D(ABC):
 
     def compute_errors(self):
         self.ensure_prediction()
-        self.error_u = np.mean((self.y_target_original[:, :, :, :, 0] - self.y_predict_original[:, :, :, :, 0]) ** 2,
-                               axis=(0, 1, 3))
-        self.error_v = np.mean((self.y_target_original[:, :, :, :, 1] - self.y_predict_original[:, :, :, :, 1]) ** 2,
-                               axis=(0, 1, 3))
-        self.error_w = np.mean((self.y_target_original[:, :, :, :, 2] - self.y_predict_original[:, :, :, :, 2]) ** 2,
-                               axis=(0, 1, 3))
+        self.network_error_u = np.mean(
+            (self.y_target_normalized[:, :, :, :, 0] - self.y_predict_normalized[:, :, :, :, 0]) ** 2,
+            axis=(0, 1, 3))
+        self.network_error_v = np.mean(
+            (self.y_target_normalized[:, :, :, :, 1] - self.y_predict_normalized[:, :, :, :, 1]) ** 2,
+            axis=(0, 1, 3))
+        self.network_error_w = np.mean(
+            (self.y_target_normalized[:, :, :, :, 2] - self.y_predict_normalized[:, :, :, :, 2]) ** 2,
+            axis=(0, 1, 3))
 
     def save_prediction(self):
         self.ensure_prediction()
@@ -440,24 +433,111 @@ class GEN3D(ABC):
             self.save_prediction()
         self.read_channel_mesh_bin()
 
+    def plot_compare_normalized_original(self):
+        plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_target_normalized[:, :, 1:, :, 0], axis=(0, 1, 3)),
+                     label="Normalized U")
+        plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_target_original[:, :, 1:, :, 0], axis=(0, 1, 3)),
+                     label="Original U")
+        plt.grid()
+        plt.grid(which='minor', linestyle='--')
+        plt.legend()
+        plt.title("Original vs normalized mean")
+        plt.xlabel("y+")
+        plt.ylabel("unit")
+        plt.show()
+
+    def plot_normalized_means(self):
+        plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_target_normalized[:, :, 1:, :, 0], axis=(0, 1, 3)),
+                     label="target U")
+        # plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_target_normalized[:, :, 1:, :, 1], axis=(0, 1, 3)),
+        #              label="target V")
+        # plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_target_normalized[:, :, 1:, :, 2], axis=(0, 1, 3)),
+        #              label="target W")
+        plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_predict_normalized[:, :, 1:, :, 0], axis=(0, 1, 3)),
+                     label="predict U")
+        # plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_predict_normalized[:, :, 1:, :, 1], axis=(0, 1, 3)),
+        #              label="predict V")
+        # plt.semilogx(self.prediction_channel_y[1:], np.mean(self.y_predict_normalized[:, :, 1:, :, 2], axis=(0, 1, 3)),
+        #              label="predict W")
+        plt.grid()
+        plt.grid(which='minor', linestyle='--')
+        plt.legend()
+        plt.title("Normalized mean")
+        plt.xlabel("y+")
+        plt.ylabel("unit")
+        plt.show()
+
+        def plot_stds(self):
+            plt.semilogx(self.prediction_channel_y[1:],
+                         np.std(self.y_target_normalized[:, :, 1:, :, 0], axis=(0, 1, 3)),
+                         label="target U")
+            plt.semilogx(self.prediction_channel_y[1:],
+                         np.std(self.y_target_normalized[:, :, 1:, :, 1], axis=(0, 1, 3)),
+                         label="target V")
+            plt.semilogx(self.prediction_channel_y[1:],
+                         np.std(self.y_target_normalized[:, :, 1:, :, 2], axis=(0, 1, 3)),
+                         label="target W")
+            plt.semilogx(self.prediction_channel_y[1:],
+                         np.std(self.y_predict_normalized[:, :, 1:, :, 0], axis=(0, 1, 3)),
+                         label="predict U")
+            plt.semilogx(self.prediction_channel_y[1:],
+                         np.std(self.y_predict_normalized[:, :, 1:, :, 1], axis=(0, 1, 3)),
+                         label="predict V")
+            plt.semilogx(self.prediction_channel_y[1:],
+                         np.std(self.y_predict_normalized[:, :, 1:, :, 2], axis=(0, 1, 3)),
+                         label="predict W")
+            plt.grid()
+            plt.grid(which='minor', linestyle='--')
+            plt.legend()
+            plt.title("Standard deviations")
+            plt.xlabel("y+")
+            plt.ylabel("unit")
+            plt.show()
+
+
+    def plot_empiric_means(self):
+        plt.semilogx(self.prediction_channel_y[1:], self.U_mean.reshape(-1)[1:] * self.data_scaling, label="u")
+        plt.xlim([0, 200])
+        plt.grid()
+        plt.grid(which='minor', linestyle='--')
+        plt.xlabel("y+")
+        plt.ylabel("U+")
+        plt.title("Empiric mean")
+        plt.legend()
+        plt.show()
+
+
+    def plot_empiric_stds(self):
+        plt.plot(self.prediction_channel_y[1:], self.U_std.reshape(-1)[1:] * self.data_scaling)
+        plt.plot(self.prediction_channel_y[1:], self.V_std.reshape(-1)[1:] * self.data_scaling)
+        plt.plot(self.prediction_channel_y[1:], self.W_std.reshape(-1)[1:] * self.data_scaling)
+        plt.grid()
+        plt.grid(which='minor', linestyle='--')
+        plt.show()
+
+
+    # Prediction channel Y with correct scale
     @property
     def prediction_channel_y(self):
         if self.channel_Y is None:
             self.read_channel_mesh_bin()
-        return self.channel_Y[self.prediction_area_y_start:self.prediction_area_y_end]
+        # 200 so 1 unit of channel = 1 y_plus, comes from the paper ...
+        return 200 * self.channel_Y[self.prediction_area_y_start:self.prediction_area_y_end]
+
 
     def get_losses(self, y_plus):
         self.compute_errors()
         if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
             print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
 
-        y_index = bisect.bisect_right(self.prediction_channel_y, y_plus / 200)
+        y_index = bisect.bisect_right(self.prediction_channel_y, y_plus)
 
-        error_u = np.mean(self.error_u[1: y_index])
-        error_v = np.mean(self.error_v[1: y_index])
-        error_w = np.mean(self.error_w[1: y_index])
+        # error_u = np.mean(self.error_u[1: y_index])
+        # error_v = np.mean(self.error_v[1: y_index])
+        # error_w = np.mean(self.error_w[1: y_index])
+        return None  # todo : fix
+        # return error_u, error_v, error_w
 
-        return error_u, error_v, error_w
 
     def load_empty_data(self, test_sample_amount):
         self.y_target_normalized = np.zeros(
@@ -465,26 +545,31 @@ class GEN3D(ABC):
         self.y_predict_normalized = np.zeros(
             (test_sample_amount, self.prediction_area_x, self.prediction_area_y, self.prediction_area_z, 3), np.float32)
 
+
     def plot_wall_normal_profiles(self, figure_name="stream_wise_profiles.png"):
         if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
             print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
         plt.rc('font', size=15)
-        plt.semilogx(200 * self.prediction_channel_y[1:],
+        plt.semilogx(self.prediction_channel_y[1:],
                      np.mean(self.y_predict_original[:, :, 1:, :, 0], axis=(0, 1, 3)), label='predicted velocity')
-        plt.semilogx(200 * self.prediction_channel_y[1:],
+        plt.semilogx(self.prediction_channel_y[1:],
                      np.mean(self.y_target_original[:, :, 1:, :, 0], axis=(0, 1, 3)), label='target velocity')
 
-        plt.semilogx(200 * self.prediction_channel_y[1:], self.U_mean.reshape(-1)[1:] * self.data_scaling,
+        plt.semilogx(self.prediction_channel_y[1:], self.U_mean.reshape(-1)[1:] * self.data_scaling,
                      label='average velocity')
         # plt.xlim([1, 200])
         # plt.ylim([0, 1])
         plt.legend()
+        plt.title("Averaged U velocities along Y")
+        plt.xlabel("y+")
+        plt.ylabel("U+")
         plt.grid()
         plt.grid(which='minor', linestyle='--')
         plt.savefig(self.generated_data_folder / figure_name)
 
+
     def plot_results(self, error_fig_name="error.png", contour_fig_name="prediction.png"):
-        if self.error_u is None or self.error_v is None or self.error_w is None:
+        if self.network_error_u is None or self.network_error_v is None or self.network_error_w is None:
             try:
                 self.compute_errors()
             except GEN3D.NoPredictionsException:
@@ -493,9 +578,9 @@ class GEN3D(ABC):
         if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
             print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
         plt.rc('font', size=15)
-        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.error_u[1:], label='MSE U')
-        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.error_v[1:], label='MSE V')
-        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.error_w[1:], label='MSE W')
+        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.network_error_u[1:], label='MSE U')
+        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.network_error_v[1:], label='MSE V')
+        plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.network_error_w[1:], label='MSE W')
         # plt.xlim([1, 200])
         # plt.ylim([0, 1])
         plt.legend()
@@ -511,17 +596,17 @@ class GEN3D(ABC):
         fig_width = fig_width_pt * inches_per_pt
         fig_height = fig_width * rows / cols * ratio
         fig, axs = plt.subplots(rows, cols, figsize=(fig_width, fig_height), squeeze=False)
-        axs[0, 0].contourf(self.channel_X, self.channel_Z, self.y_target_normalized[0, :, 22, :, 0].T, vmin=-3, vmax=3,
+        axs[0, 0].contourf(self.channel_X, self.channel_Z, self.y_target_original[0, :, 22, :, 0].T, vmin=-3, vmax=3,
                            cmap='RdBu_r')
-        axs[1, 0].contourf(self.channel_X, self.channel_Z, self.y_predict_normalized[0, :, 22, :, 0].T, vmin=-3, vmax=3,
+        axs[1, 0].contourf(self.channel_X, self.channel_Z, self.y_predict_original[0, :, 22, :, 0].T, vmin=-3, vmax=3,
                            cmap='RdBu_r')
-        axs[0, 1].contourf(self.channel_X, self.channel_Z, self.y_target_normalized[0, :, 22, :, 1].T, vmin=-3, vmax=3,
+        axs[0, 1].contourf(self.channel_X, self.channel_Z, self.y_target_original[0, :, 22, :, 1].T, vmin=-3, vmax=3,
                            cmap='PuOr_r')
-        axs[1, 1].contourf(self.channel_X, self.channel_Z, self.y_predict_normalized[0, :, 22, :, 1].T, vmin=-3, vmax=3,
+        axs[1, 1].contourf(self.channel_X, self.channel_Z, self.y_predict_original[0, :, 22, :, 1].T, vmin=-3, vmax=3,
                            cmap='PuOr_r')
-        axs[0, 2].contourf(self.channel_X, self.channel_Z, self.y_target_normalized[0, :, 22, :, 2].T, vmin=-3, vmax=3,
+        axs[0, 2].contourf(self.channel_X, self.channel_Z, self.y_target_original[0, :, 22, :, 2].T, vmin=-3, vmax=3,
                            cmap='PiYG_r')
-        axs[1, 2].contourf(self.channel_X, self.channel_Z, self.y_predict_normalized[0, :, 22, :, 2].T, vmin=-3, vmax=3,
+        axs[1, 2].contourf(self.channel_X, self.channel_Z, self.y_predict_original[0, :, 22, :, 2].T, vmin=-3, vmax=3,
                            cmap='PiYG_r')
         axs[0, 0].set_xlim([0, np.pi])
         axs[0, 0].set_ylim([0, np.pi / 2])
@@ -537,6 +622,7 @@ class GEN3D(ABC):
         axs[1, 2].set_ylim([0, np.pi / 2])
         fig.savefig(self.generated_data_folder / contour_fig_name)
 
+
     # WARNING : Correct type here should be rectilinear grid
     # but for some reason my Paraview couldn't display it as a Volume, So I use StructuredGrid
     # If you want to try with rectilinear, add an export_vtr function or something alike.
@@ -548,6 +634,7 @@ class GEN3D(ABC):
 
         self._export_array_vts(self.y_target_original[0], TARGET_FILE_NAME, TARGET_ARRAY_NAME)
         self._export_array_vts(self.y_predict_original[0], PREDICTION_FILE_NAME, PREDICTION_ARRAY_NAME)
+
 
     # File name with no extension
     def _export_array_vts(self, target, file_name, array_name=None):

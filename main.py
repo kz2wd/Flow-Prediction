@@ -16,9 +16,9 @@ def compare_data():
         model.lazy_predict(25)
     models[1].replace_prediction_with_zeros()
     models[2].replace_prediction_with_noise()
-
+    models[0].export_vts()
     benchmark = ModelBenchmarker(models)
-    benchmark.compute_losses()
+    # benchmark.compute_losses()
 
 
 if __name__ == '__main__':
