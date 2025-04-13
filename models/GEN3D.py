@@ -24,6 +24,9 @@ class GEN3D(ABC):
                  generated_data_folder=GENERATED_DATA_FOLDER, checkpoint_folder=CHECKPOINTS_FOLDER,
                  tfrecords_folder=TFRECORDS_FOLDER, in_legend_name=None):
 
+        self.original_error_w = None
+        self.original_error_v = None
+        self.original_error_u = None
         if in_legend_name is None:
             self.in_legend_name = model_name
         else:
@@ -400,7 +403,7 @@ class GEN3D(ABC):
             print("Target and prediction not computed, please predict something first", file=sys.stderr)
             raise GEN3D.NoPredictionsException()
 
-    def compute_errors(self):
+    def compute_network_errors(self):
         self.ensure_prediction()
         self.network_error_u = np.mean(
             (self.y_target_normalized[:, :, :, :, 0] - self.y_predict_normalized[:, :, :, :, 0]) ** 2,
@@ -412,20 +415,32 @@ class GEN3D(ABC):
             (self.y_target_normalized[:, :, :, :, 2] - self.y_predict_normalized[:, :, :, :, 2]) ** 2,
             axis=(0, 1, 3))
 
+    def compute_original_errors(self):
+        self.ensure_prediction()
+        self.original_error_u = np.mean(
+            (self.y_target_original[:, :, :, :, 0] - self.y_predict_original[:, :, :, :, 0]) ** 2,
+            axis=(0, 1, 3))
+        self.original_error_v = np.mean(
+            (self.y_target_original[:, :, :, :, 1] - self.y_predict_original[:, :, :, :, 1]) ** 2,
+            axis=(0, 1, 3))
+        self.original_error_w = np.mean(
+            (self.y_target_original[:, :, :, :, 2] - self.y_predict_original[:, :, :, :, 2]) ** 2,
+            axis=(0, 1, 3))
+
     def save_prediction(self):
         self.ensure_prediction()
         np.save(self.generated_data_folder / "target_x.npy", self.x_target_normalized)
         np.save(self.generated_data_folder / "target_y.npy", self.y_target_normalized)
         np.save(self.generated_data_folder / "predict_y.npy", self.y_predict_normalized)
 
-    def load_prediction(self):
-        self.x_target_normalized = np.load(self.generated_data_folder / "target_x.npy")
-        self.y_target_normalized = np.load(self.generated_data_folder / "target_y.npy")
-        self.y_predict_normalized = np.load(self.generated_data_folder / "predict_y.npy")
+    def load_prediction(self, amount=-1):
+        self.x_target_normalized = np.load(self.generated_data_folder / "target_x.npy")[:amount]
+        self.y_target_normalized = np.load(self.generated_data_folder / "target_y.npy")[:amount]
+        self.y_predict_normalized = np.load(self.generated_data_folder / "predict_y.npy")[:amount]
 
     def lazy_predict(self, at_least=1):
         try:
-            self.load_prediction()
+            self.load_prediction(at_least)
             if len(self.y_predict_normalized) < at_least:
                 raise OSError  # hehehe naughty code
         except OSError as _:
@@ -525,18 +540,33 @@ class GEN3D(ABC):
         return 200 * self.channel_Y[self.prediction_area_y_start:self.prediction_area_y_end]
 
 
-    def get_losses(self, y_plus):
-        self.compute_errors()
+    def get_normalized_losses(self, y_plus):
+        self.compute_network_errors()
         if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
             print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
 
-        y_index = bisect.bisect_right(self.prediction_channel_y, y_plus)
+        y_index = min(len(self.prediction_channel_y) - 1, bisect.bisect_right(self.prediction_channel_y, y_plus))
 
-        # error_u = np.mean(self.error_u[1: y_index])
-        # error_v = np.mean(self.error_v[1: y_index])
-        # error_w = np.mean(self.error_w[1: y_index])
-        return None  # todo : fix
-        # return error_u, error_v, error_w
+        # error_u = np.mean(self.network_error_u[1: y_index])
+        # error_v = np.mean(self.network_error_v[1: y_index])
+        # error_w = np.mean(self.network_error_w[1: y_index])
+        error_u = self.network_error_u[y_index]
+        error_v = self.network_error_v[y_index]
+        error_w = self.network_error_w[y_index]
+        return error_u, error_v, error_w
+
+
+    def get_original_losses(self, y_plus):
+        self.compute_original_errors()
+        if self.channel_Y is None or self.channel_X is None or self.channel_Z is None:
+            print("Channels not loaded, please read channel mesh bin", file=sys.stderr)
+
+        y_index = min(len(self.prediction_channel_y) - 1, bisect.bisect_right(self.prediction_channel_y, y_plus))
+
+        error_u = np.mean(self.original_error_u[:y_index])
+        error_v = np.mean(self.original_error_v[:y_index])
+        error_w = np.mean(self.original_error_w[:y_index])
+        return error_u, error_v, error_w
 
 
     def load_empty_data(self, test_sample_amount):
@@ -571,7 +601,7 @@ class GEN3D(ABC):
     def plot_results(self, error_fig_name="error.png", contour_fig_name="prediction.png"):
         if self.network_error_u is None or self.network_error_v is None or self.network_error_w is None:
             try:
-                self.compute_errors()
+                self.compute_network_errors()
             except GEN3D.NoPredictionsException:
                 return
 
@@ -581,8 +611,12 @@ class GEN3D(ABC):
         plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.network_error_u[1:], label='MSE U')
         plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.network_error_v[1:], label='MSE V')
         plt.semilogx(200 * self.channel_Y[1:self.prediction_area_y], self.network_error_w[1:], label='MSE W')
-        # plt.xlim([1, 200])
-        # plt.ylim([0, 1])
+        plt.semilogx([15, 30, 50, 100], [0.015, 0.065, 0.195, 0.53], label='mse u', linestyle=':', marker='D')
+        plt.semilogx([15, 30, 50, 100], [0.02, 0.105, 0.30, 0.69], label='mse v', linestyle=':', marker='D')
+        plt.semilogx([15, 30, 50, 100], [0.02, 0.085, 0.28, 0.69], label='mse w', linestyle=':', marker='D')
+
+        plt.xlim([1, 200])
+        plt.ylim([0, 1])
         plt.legend()
         plt.grid()
         plt.grid(which='minor', linestyle='--')
@@ -622,6 +656,10 @@ class GEN3D(ABC):
         axs[1, 2].set_ylim([0, np.pi / 2])
         fig.savefig(self.generated_data_folder / contour_fig_name)
 
+    def plot_histogram(self, target, i, title):
+        plt.hist(target[:, :, :, :, i].reshape(-1))
+        plt.title(title)
+        plt.show()
 
     # WARNING : Correct type here should be rectilinear grid
     # but for some reason my Paraview couldn't display it as a Volume, So I use StructuredGrid

@@ -10,12 +10,12 @@ class ModelBenchmarker:
 
     def compute_losses(self, distances: list[int] = None):
         if distances is None:
-            distances = [15, 30, 50, 100]  # default y_plus used in the paper
+            distances = [15, 30, 50, 100, 200]  # default y_plus used in the paper
 
             for model in self.models:
-                plt.plot(distances, [model.get_losses(y_plus)[0] for y_plus in distances], label=model.in_legend_name)
+                plt.plot(distances, [model.get_original_losses(y_plus)[0] / model.data_scaling for y_plus in distances], label=model.in_legend_name)
             plt.ylabel('U errors')
             plt.xlabel('Y+ distance')
-            plt.ylim([0, 10])
+            # plt.ylim([0, 10])
             plt.legend()
             plt.show()

@@ -79,7 +79,7 @@ def create_volume_actor(input_data):
         color.AddHSVPoint(20.0, 0.0, 1.0, 1.0)   # Red
 
         opacity.AddPoint(0.0, 0.3)
-        opacity.AddPoint(1.0, 0.1)
+        opacity.AddPoint(1.0, 0.3)
         opacity.AddPoint(20.0, 0.95)
 
     else:

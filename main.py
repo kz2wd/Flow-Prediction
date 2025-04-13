@@ -13,13 +13,18 @@ def compare_data():
         A03(in_legend_name="A03-noise"),
     ]
     for model in models:
-        model.lazy_predict(25)
+        model.lazy_predict(50)
     models[1].replace_prediction_with_zeros()
     models[2].replace_prediction_with_noise()
-    models[0].export_vts()
     benchmark = ModelBenchmarker(models)
-    # benchmark.compute_losses()
+    benchmark.compute_losses()
+
+
+def test():
+    model = A03()
+    model.lazy_predict(50)
 
 
 if __name__ == '__main__':
     compare_data()
+    # test()
