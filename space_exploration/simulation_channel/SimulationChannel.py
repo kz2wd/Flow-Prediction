@@ -1,3 +1,5 @@
+from typing_extensions import Unpack
+
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +18,7 @@ class SimulationChannel:
         self.x_dimension = np.arange(x_resolution) * x_length / x_resolution
         self.y_dimension = np.load(FolderManager.channel_coordinates / "coordY.npy")
         self.z_dimension = np.arange(z_resolution) * z_length / z_resolution
-        self.prediction_sub_space = prediction_sub_space
+        self.prediction_sub_space: PredictionSubSpace = prediction_sub_space
 
         self.data = ChannelData(channel_data_file, self.prediction_sub_space)
 
@@ -40,4 +42,4 @@ class SimulationChannel:
         wall = tf.concat((wall, (tf.reshape(parsed_rec['raw_tx'], (nx, 1, nz, 1)) - self.data.TBX_mean) / self.data.TBX_std), -1)
         wall = tf.concat((wall, (tf.reshape(parsed_rec['raw_tz'], (nx, 1, nz, 1)) - self.data.TBZ_mean) / self.data.TBZ_std), -1)
 
-        return wall, flow[self.prediction_sub_space.x_slice, self.prediction_sub_space.y_slice, self.prediction_sub_space.z_slice, :]
+        return wall, self.prediction_sub_space.select(flow)
