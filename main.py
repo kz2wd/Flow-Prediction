@@ -11,7 +11,7 @@ from space_exploration.models.C.CBase import CBase
 
 def test():
     model = C04()
-    model.test(1)
+    model.train(1, 1, 4)
 
 def test_multiple():
     models = [C04(), C05(), C06()]
