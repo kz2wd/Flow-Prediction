@@ -1,12 +1,15 @@
 import os
 import re
+import sys
 from abc import ABC, abstractmethod
-
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
+from sklearn.metrics import mean_squared_error
+
 from FolderManager import FolderManager
 from space_exploration.simulation_channel import SimulationChannel
+
 
 
 class GAN3D(ABC):
@@ -169,16 +172,15 @@ class GAN3D(ABC):
 
         # Generate checkpoint object to track the generator and discriminator architectures and optimizers
 
+        # checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
+        ckpt_file = FolderManager.checkpoints(self) / self.checkpoint
         checkpoint = tf.train.Checkpoint(
             generator_optimizer=generator_optimizer,
             discriminator_optimizer=discriminator_optimizer,
             generator=generator,
             discriminator=discriminator
         )
-
-        # checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
-        ckpt_file = FolderManager.checkpoints(self) / self.checkpoint
-        checkpoint.restore(ckpt_file).expect_partial()
+        checkpoint.restore(ckpt_file)
 
         # samples, stream wise resolution, wall normal wise resolution, span wise resolution, velocities.
         # velocities -> 0, u, stream wise | 1, v, wall normal wise | 2, w, spawn wise
@@ -206,5 +208,7 @@ class GAN3D(ABC):
         except Exception as e:
             print(e)
 
-        print(f'Target mean: {np.mean(self.y_target_normalized)}, std: {np.std(self.y_target_normalized)}')
+        mse = np.mean((self.y_target_normalized - self.y_predict_normalized) ** 2)
+        print(mse)
+
         print(f'Predict mean: {np.mean(self.y_predict_normalized)}, std: {np.std(self.y_predict_normalized)}')

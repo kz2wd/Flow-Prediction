@@ -17,7 +17,7 @@ class PaperBase(GAN3D, ABC):
     A base for models coming from the paper
     """
 
-    def __init__(self, name, checkpoint, y_end, y_start=0):
+    def __init__(self, name, checkpoint, y_end, y_start=0, up_sampling_indices=None):
         prediction_sub_space = PredictionSubSpace(x_start=0, x_end=64, y_start=y_start, y_end=y_end, z_start=0,
                                                   z_end=64)
         channel = SimulationChannel(x_length=np.pi, z_length=np.pi / 2, x_resolution=64, z_resolution=64,
