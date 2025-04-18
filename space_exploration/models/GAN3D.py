@@ -156,7 +156,9 @@ class GAN3D(ABC):
     def lazy_test(self, amount):
         try:
             self.load(amount)
-        except (FileNotFoundError, KeyError):
+            if len(self.y_predict_normalized) < amount:
+                raise ValueError
+        except (FileNotFoundError, KeyError, ValueError):
             self.test(amount)
             self.save()
 
