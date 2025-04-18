@@ -21,6 +21,7 @@ class GAN3D(ABC):
     def __init__(self, name, checkpoint, channel: SimulationChannel,
                  n_residual_blocks=32, input_channels=3, output_channels=3, learning_rate=1e-4, ):
 
+        FolderManager.init(self)  # ensure all related folders are created
         self.checkpoint = checkpoint
 
         self.channel: SimulationChannel = channel
