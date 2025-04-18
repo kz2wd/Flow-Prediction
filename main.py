@@ -11,10 +11,10 @@ from space_exploration.models.C.CBase import CBase
 
 def test():
     model = C04()
-    model.train(1, 1, 4)
-    # model.lazy_test(10)
-    # model.benchmark()
-    # Plotter.plot_mse(model)
+    # model.train(1, 1, 4)
+    model.lazy_test(10)
+    model.benchmark()
+    Plotter.plot_mse(model, "mse")
 
 def test_multiple():
     models = [C04(), C05(), C06()]
