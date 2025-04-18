@@ -319,6 +319,7 @@ class GAN3D(ABC):
             return gen_loss, disc_loss
 
         dataset_train, dataset_test, dataset_valid = self.generate_datasets("test", batch_size)
+        dataset_train = dataset_train.take(10)
 
         generator = self.generator()
         discriminator = self.discriminator()

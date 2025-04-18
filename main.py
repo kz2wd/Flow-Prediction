@@ -9,16 +9,12 @@ from space_exploration.models.C.C06 import C06
 from space_exploration.models.C.CBase import CBase
 
 
-# This is a main
-# For now, just used as the root folder of the project
-
-
 def test():
     model = C04()
-    # model.train(1, 1, 4)
-    model.lazy_test(10)
-    model.benchmark()
-    Plotter.plot_mse(model)
+    model.train(1, 1, 4)
+    # model.lazy_test(10)
+    # model.benchmark()
+    # Plotter.plot_mse(model)
 
 def test_multiple():
     models = [C04(), C05(), C06()]
