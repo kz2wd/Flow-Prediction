@@ -29,6 +29,7 @@ class GAN3D(ABC):
         self.output_channels = output_channels
         self.name = name
         self.n_residual_blocks = n_residual_blocks
+        self.already_built = False
 
         FolderManager.init(self)  # ensure all related folders are created
 
