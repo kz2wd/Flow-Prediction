@@ -13,7 +13,7 @@ from space_exploration.simulation_channel.SimulationChannel import SimulationCha
 
 class A01(PaperBase):
     def __init__(self):
-        super().__init__(name="A01", checkpoint="ckpt-15", y_end=64)
+        super().__init__(name="A01", checkpoint_number="ckpt-15", y_end=64)
 
     def generator(self):
 

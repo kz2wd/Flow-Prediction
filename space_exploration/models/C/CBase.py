@@ -8,8 +8,8 @@ from space_exploration.models.utils import res_block_gen, up_sampling_block, dis
 
 
 class CBase(PaperBase):
-    def __init__(self, name, checkpoint, up_sampling_indices):
-        super().__init__(name, checkpoint, y_end=32)
+    def __init__(self, name, checkpoint_number, up_sampling_indices):
+        super().__init__(name, checkpoint_number, y_end=32)
         self.up_sampling_indices = up_sampling_indices
 
     def generator(self):

@@ -17,13 +17,13 @@ class PaperBase(GAN3D, ABC):
     A base for models coming from the paper
     """
 
-    def __init__(self, name, checkpoint, y_end, y_start=0, up_sampling_indices=None):
+    def __init__(self, name, checkpoint_number, y_end, y_start=0, up_sampling_indices=None):
         prediction_sub_space = PredictionSubSpace(x_start=0, x_end=64, y_start=y_start, y_end=y_end, z_start=0,
                                                   z_end=64)
         channel = SimulationChannel(x_length=np.pi, z_length=np.pi / 2, x_resolution=64, z_resolution=64,
                                     prediction_sub_space=prediction_sub_space,
                                     channel_data_file=FolderManager.tfrecords / "scaling.npz")
-        super().__init__(name=name, checkpoint=checkpoint, channel=channel)
+        super().__init__(name=name, checkpoint_number=checkpoint_number, channel=channel)
         self.BATCH_SIZE_PER_REPLICA = 4
         self.GLOBAL_BATCH_SIZE = 1
 

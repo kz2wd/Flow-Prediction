@@ -12,7 +12,8 @@ from space_exploration.models.C.CBase import CBase
 def test():
     model = C04()
     # model.train(1, 1, 4)
-    model.lazy_test(200)
+    model.build()
+    model.test(20)
     model.benchmark()
     Plotter.plot_mse(model, "mse")
 
