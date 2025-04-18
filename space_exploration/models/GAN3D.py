@@ -169,7 +169,7 @@ class GAN3D(ABC):
     def benchmark(self):
         benchmark_dataset = FolderManager.benchmark_file(self)
         # MSE along Y
-        mse = np.mean((self.y_predict_normalized - self.y_predict_normalized) ** 2, axis=(0, 1, 3))
+        mse = np.mean((self.y_target_normalized - self.y_predict_normalized) ** 2, axis=(0, 1, 3, 4))
         u_mse = np.mean((self.y_target_normalized[..., 0] - self.y_predict_normalized[..., 0]) ** 2, axis=(0, 1, 3))
         v_mse = np.mean((self.y_target_normalized[..., 1] - self.y_predict_normalized[..., 1]) ** 2, axis=(0, 1, 3))
         w_mse = np.mean((self.y_target_normalized[..., 2] - self.y_predict_normalized[..., 2]) ** 2, axis=(0, 1, 3))
