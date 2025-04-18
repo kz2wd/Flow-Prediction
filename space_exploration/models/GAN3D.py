@@ -3,7 +3,9 @@ import re
 import sys
 import time
 from abc import ABC, abstractmethod
+from plistlib import loads
 
+import h5py
 import mlflow
 import numpy as np
 import tensorflow as tf
@@ -233,8 +235,39 @@ class GAN3D(ABC):
 
         mse = np.mean((self.y_target_normalized - self.y_predict_normalized) ** 2)
         print(mse)
-
         print(f'Predict mean: {np.mean(self.y_predict_normalized)}, std: {np.std(self.y_predict_normalized)}')
+
+    def save(self):
+        save_dataset = FolderManager.predictions_file(self)
+        with h5py.File(save_dataset, 'w') as f:
+            f.create_dataset('y_pred', data=self.y_predict_normalized, compression='gzip')
+            f.create_dataset('y_target', data=self.y_target_normalized, compression='gzip')
+
+    def load(self, amount):
+        save_dataset = FolderManager.predictions_file(self)
+        with h5py.File(save_dataset, 'r') as f:
+            self.y_predict_normalized = f['y_pred'][:amount, ...]
+            self.y_target_normalized = f['y_target'][:amount, ...]
+
+    def lazy_test(self, amount):
+        try:
+            self.load(amount)
+        except (FileNotFoundError, KeyError):
+            self.test(amount)
+            self.save()
+
+    def benchmark(self):
+        benchmark_dataset = FolderManager.benchmark_file(self)
+        # MSE along Y
+        mse = np.mean((self.y_predict_normalized - self.y_predict_normalized) ** 2, axis=(0, 1, 3))
+        u_mse = np.mean((self.y_target_normalized[..., 0] - self.y_predict_normalized[..., 0]) ** 2, axis=(0, 1, 3))
+        v_mse = np.mean((self.y_target_normalized[..., 1] - self.y_predict_normalized[..., 1]) ** 2, axis=(0, 1, 3))
+        w_mse = np.mean((self.y_target_normalized[..., 2] - self.y_predict_normalized[..., 2]) ** 2, axis=(0, 1, 3))
+        with h5py.File(benchmark_dataset, 'w') as f:
+            f.create_dataset('total_mse_y_wise', data=mse, compression='gzip')
+            f.create_dataset('u_mse_y_wise', data=u_mse, compression='gzip')
+            f.create_dataset('v_mse_y_wise', data=v_mse, compression='gzip')
+            f.create_dataset('w_mse_y_wise', data=w_mse, compression='gzip')
 
 
     def train(self, epochs, saving_freq, batch_size):

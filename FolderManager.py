@@ -1,7 +1,8 @@
 from pathlib import Path
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
+
 if TYPE_CHECKING:
     from space_exploration.models.GAN3D import GAN3D
 
@@ -15,12 +16,20 @@ class FolderManager:
 
     @staticmethod
     def checkpoints(model: 'GAN3D'):
-        return FolderManager._checkpoints / model.name
+        return FolderManager._checkpoints / (model if isinstance(model, str) else model.name)
 
     @staticmethod
     def generated_data(model: 'GAN3D'):
-        return FolderManager._generated_data / model.name
+        return FolderManager._generated_data / (model if isinstance(model, str) else model.name)
 
     @staticmethod
     def logs(model: 'GAN3D'):
-        return FolderManager._logs / model.name
+        return FolderManager._logs / (model if isinstance(model, str) else model.name)
+
+    @staticmethod
+    def benchmark_file(model: 'GAN3D'):
+        return FolderManager.generated_data(model) / "benchmark.hdf5"
+
+    @staticmethod
+    def predictions_file(model: 'GAN3D'):
+        return FolderManager.generated_data(model) / "predictions.hdf5"

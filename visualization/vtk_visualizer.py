@@ -1,7 +1,7 @@
 import vtk
 from vtkmodules.vtkCommonDataModel import vtkStructuredGrid
 
-from folder_locations import GENERATED_DATA_FOLDER
+import FolderManager
 from visualization.saving_file_names import *
 
 
@@ -32,8 +32,8 @@ def load_grid_with_magnitude(file, magnitude_name):
 
 target_model = "A03"
 # Step 1: Load both datasets with magnitude
-grid_target = load_grid_with_magnitude(GENERATED_DATA_FOLDER/target_model/TARGET_FILE_NAME, "mag_target")
-grid_predict = load_grid_with_magnitude(GENERATED_DATA_FOLDER/target_model/PREDICTION_FILE_NAME, "mag_predict")
+grid_target = load_grid_with_magnitude(FolderManager.FolderManager._generated_data/target_model/TARGET_FILE_NAME, "mag_target")
+grid_predict = load_grid_with_magnitude(FolderManager.FolderManager._generated_data/target_model/PREDICTION_FILE_NAME, "mag_predict")
 
 # Step 2: Copy both magnitude arrays into one dataset
 # We'll use the geometry and topology of `grid_target`
