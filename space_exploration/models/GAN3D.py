@@ -114,7 +114,7 @@ class GAN3D(ABC):
         dataset_full, _, _ = self.generate_datasets("train", batch_size=4, train_split=1.0)
 
         self.build()
-        self.checkpoint.restore(tf.train.latest_checkpoint(FolderManager.checkpoints(self) / self.checkpoint))
+        self.checkpoint.restore(tf.train.latest_checkpoint(FolderManager.checkpoints(self)))
 
         # samples, stream wise resolution, wall normal wise resolution, span wise resolution, velocities.
         # velocities -> 0, u, stream wise | 1, v, wall normal wise | 2, w, spawn wise
