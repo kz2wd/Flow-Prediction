@@ -259,9 +259,15 @@ class GAN3D(ABC):
         # dataset_train = dataset_train.batch(batch_size=batch_size)
         # dataset_train = dataset_train.prefetch(n_prefetch)
 
-        dataset_valid = tfr_files_val_ds.map(lambda x: self.tf_parser(x),
+        dataset_valid = tfr_files_val_ds.map(lambda x: self.channel.tf_parser(x),
                                              num_parallel_calls=tf.data.experimental.AUTOTUNE)
         # dataset_valid = dataset_valid.shuffle(shuffle_buffer)
+
+        for example in dataset_valid.take(1):
+            print("Example:", example)
+
+        input()
+
         dataset_valid = dataset_valid.batch(batch_size=batch_size)
         dataset_valid = dataset_valid.prefetch(n_prefetch)
 
