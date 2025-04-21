@@ -10,7 +10,7 @@ def test():
     model = C04()
     # model.train(1, 1, 4)
     # model.generate_pipeline_training()
-    model.generate_datasets("test", 1)
+    # model.generate_datasets("test", 1)
     model.test(20)
     # model.benchmark()
     # Plotter.plot_mse(model, "mse")
