@@ -102,7 +102,6 @@ class GAN3D(ABC):
 
         input()
 
-        return parsed_dataset
         # Compute dataset sizes
         DATASET_SIZE = 100
         train_size = int(train_split * DATASET_SIZE)
