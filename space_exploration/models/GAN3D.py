@@ -70,7 +70,7 @@ class GAN3D(ABC):
         )
 
     def make_dataset(self, target_folder, batch_size=32, shuffle=True, split=(0.8, 0.1, 0.1),
-                     seed=42):
+                     seed=42, max_file_amount=-1):
         """
         Create TensorFlow datasets (train, val, test) from a folder of TFRecord files.
 
@@ -80,9 +80,11 @@ class GAN3D(ABC):
             shuffle (bool): Whether to shuffle records within each dataset.
             split (tuple): Fractions for (train, val, test) split. Must sum to 1.0.
             seed (int): Random seed for reproducibility.
+            max_file_amount (int): Maximum number of files to load.
 
         Returns:
             dict: {'train': train_ds, 'val': val_ds, 'test': test_ds}
+
         """
 
         # Step 1: Gather all TFRecord files
@@ -92,6 +94,9 @@ class GAN3D(ABC):
             for file in os.listdir(folder_path)
             if file.endswith(".tfrecords")
         ])
+
+        if max_file_amount > 0:
+            record_files = record_files[:max_file_amount]
 
         if not record_files:
             raise FileNotFoundError(f"No TFRecord files found in: {folder_path}")
@@ -109,6 +114,8 @@ class GAN3D(ABC):
         test_files = record_files[n_train + n_val:]
 
         def build_dataset(file_list):
+            if len(file_list) == 0:
+                return None
             ds = tf.data.Dataset.from_tensor_slices(file_list)
             ds = ds.interleave(
                 lambda x: tf.data.TFRecordDataset(x),
@@ -154,11 +161,12 @@ class GAN3D(ABC):
         # train folder is 1/10th of test size, there is a good reason explained in the readme of original code
         # dataset_full, _, _ = self.generate_datasets("train", batch_size=1, train_split=1.0)
 
-        dataset_full = self.make_dataset("test", split=(1.0, 0, 0))["train"]
+        dataset_full = self.make_dataset("test", batch_size=1, split=(1.0, 0, 0), max_file_amount=1)["train"]
         self.build()
         latest_ckpt = tf.train.latest_checkpoint(FolderManager.checkpoints(self))
         print(f"Found checkpoint: {latest_ckpt}.")
-        status = self.checkpoint.restore(latest_ckpt)
+        # REMOVE EXPECT PARTIAL IF WEIRD RESULTS!
+        status = self.checkpoint.restore(latest_ckpt).expect_partial()
 
         # IF MESSY RESULTS OBTAINED, TRY TO ASSERT CONSUMED !! (it will yield interesting errors :)
         # status.assert_consumed()
@@ -329,7 +337,7 @@ class GAN3D(ABC):
             f.create_dataset('v_mse_y_wise', data=v_mse, compression='gzip')
             f.create_dataset('w_mse_y_wise', data=w_mse, compression='gzip')
 
-    def train(self, epochs, saving_freq, batch_size):
+    def train(self, epochs, saving_freq, batch_size, max_files=-1):
         @tf.function
         def train_step(x_target, y_target):
             """
@@ -374,8 +382,10 @@ class GAN3D(ABC):
 
             return gen_loss, disc_loss
 
-        dataset_train, dataset_test, dataset_valid = self.generate_datasets("test", batch_size)
-        dataset_train = dataset_train.take(10)
+        datasets = self.make_dataset("test", batch_size, max_file_amount=max_files)
+        dataset_train = datasets["train"]
+        dataset_valid = datasets["val"]
+        dataset_test = datasets["test"]
 
         self.build()
 

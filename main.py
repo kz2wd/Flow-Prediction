@@ -11,9 +11,9 @@ def test():
     # model.train(1, 1, 4)
     # model.generate_pipeline_training()
     # model.generate_datasets("test", 1)
-    model.test(20)
-    # model.benchmark()
-    # Plotter.plot_mse(model, "mse")
+    model.train(1, 1, batch_size=4, max_files=10)
+    model.benchmark()
+    Plotter.plot_mse(model, "mse")
 
 
 if __name__ == '__main__':
