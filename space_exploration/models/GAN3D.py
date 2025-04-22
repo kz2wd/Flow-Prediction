@@ -161,7 +161,7 @@ class GAN3D(ABC):
         # train folder is 1/10th of test size, there is a good reason explained in the readme of original code
         # dataset_full, _, _ = self.generate_datasets("train", batch_size=1, train_split=1.0)
 
-        dataset_full = self.make_dataset("train", batch_size=1, split=(1.0, 0, 0), max_file_amount=1)["train"]
+        dataset_test = self.make_dataset("test", batch_size=1)["test"]
         self.build()
         latest_ckpt = tf.train.latest_checkpoint(FolderManager.checkpoints(self))
         print(f"Found checkpoint: {latest_ckpt}.")
@@ -180,7 +180,7 @@ class GAN3D(ABC):
         self.y_predict_normalized = np.zeros(
             (test_sample_amount, *self.channel.prediction_sub_space.sizes(), 3), np.float32)
 
-        itr = iter(dataset_full)
+        itr = iter(dataset_test)
         try:
             for i in range(test_sample_amount):
                 if float.is_integer(i / 50):
