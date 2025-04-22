@@ -15,10 +15,6 @@ def test():
     # model.benchmark()
     # Plotter.plot_mse(model, "mse")
 
-def test_multiple():
-    models = [C04(), C05(), C06()]
-    for model in models:
-        model.test(5)
 
 if __name__ == '__main__':
     # test_multiple()

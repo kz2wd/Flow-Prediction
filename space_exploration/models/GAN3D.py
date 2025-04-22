@@ -69,52 +69,74 @@ class GAN3D(ABC):
             discriminator=self._discriminator
         )
 
-    def generate_datasets(self, target_folder, batch_size, train_split=0.7, test_split=0.15, validation_split=0.15):
-        records_folder = FolderManager.tfrecords / target_folder
-        record_files = [
-            str(records_folder / file)
-            for file in os.listdir(records_folder)
+    def make_dataset(self, target_folder, batch_size=32, shuffle=True, split=(0.8, 0.1, 0.1),
+                     seed=42):
+        """
+        Create TensorFlow datasets (train, val, test) from a folder of TFRecord files.
+
+        Args:
+            target_folder (str): folder inside tfrecords containing `.tfrecords` files.
+            batch_size (int): Batch size.
+            shuffle (bool): Whether to shuffle records within each dataset.
+            split (tuple): Fractions for (train, val, test) split. Must sum to 1.0.
+            seed (int): Random seed for reproducibility.
+
+        Returns:
+            dict: {'train': train_ds, 'val': val_ds, 'test': test_ds}
+        """
+
+        # Step 1: Gather all TFRecord files
+        folder_path = FolderManager.tfrecords / target_folder
+        record_files = sorted([
+            str(os.path.join(folder_path, file))
+            for file in os.listdir(folder_path)
             if file.endswith(".tfrecords")
-        ]
+        ])
 
-        # Read and parse dataset
-        raw_dataset = tf.data.Dataset.list_files(record_files)
-        split_dataset = raw_dataset.interleave(lambda x: tf.data.TFRecordDataset(x).take(30),
-                                               cycle_length=16,
-                                               num_parallel_calls=tf.data.AUTOTUNE)
-        parsed_dataset = split_dataset.map(lambda x: self.channel.tf_parser(x), num_parallel_calls=tf.data.AUTOTUNE)
+        if not record_files:
+            raise FileNotFoundError(f"No TFRecord files found in: {folder_path}")
 
-        # Filter out problematic samples (e.g., empty ones)
-        # def is_valid(x, y=None):
-        #     if y is None:
-        #         return tf.size(x) > 0
-        #     return tf.logical_and(tf.size(x) > 0, tf.size(y) > 0)
-        #
-        # # Apply filtering
-        # parsed_dataset = parsed_dataset.filter(is_valid)
+        # Step 2: Split the file list
+        np.random.seed(seed)
+        np.random.shuffle(record_files)
 
-        # Shuffle and batch before splitting
-        parsed_dataset = parsed_dataset.shuffle(10000)
-        parsed_dataset = parsed_dataset.batch(batch_size, drop_remainder=True)
+        n = len(record_files)
+        n_train = int(n * split[0])
+        n_val = int(n * split[1])
 
-        for example in parsed_dataset.take(1):
-            print("Example:", example)
+        train_files = record_files[:n_train]
+        val_files = record_files[n_train:n_train + n_val]
+        test_files = record_files[n_train + n_val:]
 
-        input()
+        def build_dataset(file_list):
+            ds = tf.data.Dataset.from_tensor_slices(file_list)
+            ds = ds.interleave(
+                lambda x: tf.data.TFRecordDataset(x),
+                cycle_length=tf.data.AUTOTUNE,
+                num_parallel_calls=tf.data.AUTOTUNE
+            )
+            ds = ds.map(
+                lambda record: self.channel.tf_parser(record),
+                num_parallel_calls=tf.data.AUTOTUNE
+            )
 
-        # Compute dataset sizes
-        DATASET_SIZE = 100
-        train_size = int(train_split * DATASET_SIZE)
-        test_size = int(test_split * DATASET_SIZE)
-        val_size = DATASET_SIZE - train_size - test_size  # to avoid rounding issues
+            # Optional filtering
+            def is_valid(x, y):
+                return tf.logical_and(tf.size(x) > 0, tf.size(y) > 0)
 
-        # Split
-        train_dataset = parsed_dataset.take(train_size)
-        test_val = parsed_dataset.skip(train_size)
-        val_dataset = test_val.take(val_size)
-        test_dataset = test_val.skip(val_size)
+            ds = ds.filter(is_valid)
 
-        return train_dataset, val_dataset, test_dataset
+            if shuffle:
+                ds = ds.shuffle(10000)
+            ds = ds.batch(batch_size, drop_remainder=True)
+            ds = ds.prefetch(tf.data.AUTOTUNE)
+            return ds
+
+        return {
+            'train': build_dataset(train_files),
+            'val': build_dataset(val_files),
+            'test': build_dataset(test_files),
+        }
 
     def test(self, test_sample_amount=50):
         physical_devices = tf.config.list_physical_devices('GPU')
@@ -130,8 +152,9 @@ class GAN3D(ABC):
 
         # train & test folder are inversed bcause of the amount of data they contained,
         # train folder is 1/10th of test size, there is a good reason explained in the readme of original code
-        dataset_full, _, _ = self.generate_datasets("train", batch_size=1, train_split=1.0)
+        # dataset_full, _, _ = self.generate_datasets("train", batch_size=1, train_split=1.0)
 
+        dataset_full = self.make_dataset("test", split=(1.0, 0, 0))["train"]
         self.build()
         latest_ckpt = tf.train.latest_checkpoint(FolderManager.checkpoints(self))
         print(f"Found checkpoint: {latest_ckpt}.")
