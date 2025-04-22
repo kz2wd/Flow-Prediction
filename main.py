@@ -11,7 +11,8 @@ def test():
     # model.train(1, 1, 4)
     # model.generate_pipeline_training()
     # model.generate_datasets("test", 1)
-    model.train(1, 1, batch_size=4, max_files=10)
+    model.train(20, 1, batch_size=4)
+    model.lazy_test(100)
     model.benchmark()
     Plotter.plot_mse(model, "mse")
 
