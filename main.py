@@ -7,14 +7,11 @@ from space_exploration.models.C.C06 import C06
 
 
 def test():
-    model = C04()
-    # model.train(1, 1, 4)
-    # model.generate_pipeline_training()
-    # model.generate_datasets("test", 1)
-    # model.train(20, 1, batch_size=4)
+    model = A03()
     model.lazy_test(100)
-    model.benchmark()
-    Plotter.plot_mse(model, "mse")
+    model.export_vts()
+    # model.benchmark()
+    # Plotter.plot_mse(model, "mse")
 
 
 if __name__ == '__main__':

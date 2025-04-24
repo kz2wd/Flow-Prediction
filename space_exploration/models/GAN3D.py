@@ -12,6 +12,10 @@ import tensorflow.keras as keras
 from FolderManager import FolderManager
 from space_exploration.simulation_channel import SimulationChannel
 
+from visualization.saving_file_names import *
+import vtk
+from vtk.util import numpy_support
+
 
 class GAN3D(ABC):
     def __init__(self, name, checkpoint_number, channel: SimulationChannel,
@@ -362,3 +366,37 @@ class GAN3D(ABC):
                       f"time: {elapsed:.2f}s")
 
         return
+
+    # WARNING : Correct type here should be rectilinear grid
+    # but for some reason my Paraview couldn't display it as a Volume, So I use StructuredGrid
+    # If you want to try with rectilinear, add an export_vtr function or something alike.
+    def export_vts(self):
+        self._export_array_vts(self.y_target_normalized[0], TARGET_FILE_NAME, TARGET_ARRAY_NAME)
+        self._export_array_vts(self.y_predict_normalized[0], PREDICTION_FILE_NAME, PREDICTION_ARRAY_NAME)
+
+
+    # File name with no extension
+    def _export_array_vts(self, target, file_name, array_name=None):
+        if array_name is None:
+            array_name = file_name
+        structured_grid = vtk.vtkStructuredGrid()
+        points = vtk.vtkPoints()
+        for k in range(self.channel.prediction_sub_space.z_size):
+            for j in range(self.channel.prediction_sub_space.y_size):
+                for i in range(self.channel.prediction_sub_space.x_size):
+                    points.InsertNextPoint(self.channel.x_dimension[i], self.channel.y_dimension[j], self.channel.z_dimension[k])
+
+        structured_grid.SetPoints(points)
+        structured_grid.SetDimensions(*self.channel.prediction_sub_space.sizes)
+
+        velocity_array = numpy_support.numpy_to_vtk(num_array=target.reshape(-1, 3), deep=True,
+                                                    array_type=vtk.VTK_FLOAT)
+        velocity_array.SetName(array_name)
+
+        structured_grid.GetPointData().AddArray(velocity_array)
+
+        writer = vtk.vtkXMLStructuredGridWriter()
+        writer.SetFileName(FolderManager.generated_data(self) / file_name)
+        writer.SetInputData(structured_grid)
+        writer.Write()
+
