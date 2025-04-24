@@ -387,7 +387,7 @@ class GAN3D(ABC):
                     points.InsertNextPoint(self.channel.x_dimension[i], self.channel.y_dimension[j], self.channel.z_dimension[k])
 
         structured_grid.SetPoints(points)
-        structured_grid.SetDimensions(*self.channel.prediction_sub_space.sizes)
+        structured_grid.SetDimensions(*self.channel.prediction_sub_space.sizes())
 
         velocity_array = numpy_support.numpy_to_vtk(num_array=target.reshape(-1, 3), deep=True,
                                                     array_type=vtk.VTK_FLOAT)
