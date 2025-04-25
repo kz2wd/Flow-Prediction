@@ -1,0 +1,17 @@
+I want to explore a space of parameters in python where what we explore is very abstract, and it has the following constraints:
+- we have X parameters that are numbers, with various ranges, some can be floating point, other int.
+- each point in the parameter space could be explored, taking a lot of time, so we attribute a budget to it.
+- The budget is time in seconds.
+- we ask a probe object to explore one step, it takes a certain amount of time, we get a result which is a floating number, a score of the current point.
+- There are different level of precision that we can expect from the probe, we should be able to choose between FASTEST, FAST, NORMAL for example. Fastest will result in less intensive computation but rougher results, so the results obtained with a precision level should not be compared with others from another precision.
+- Ideally, we want to find the best point in the space in the normal precision, but it could start with rougher precision and mix the explorations
+- In the end, we want to plot our exploration. Since it may be in more than 3 dimensions, we might need dimension reduction visualization.
+- We should keep data to later plot, ideally by using an abstract log function log(value, explored-point-in-space, precision)
+- We need a function that given our current explored space choose where to do our next exploration step. It should consider the precision to use, the time already spent in the various positions and the precision used.
+- The choice function has parameters that should be tunable before the start of the exploration, and can compute various metrics to have a better understanding of the exploration, such as the ratio of efficacity (score over time used) of a space.
+
+
+
+https://ax.dev/docs/tutorials/tune_cnn_service
+
+https://honegumi.readthedocs.io/en/stable/
