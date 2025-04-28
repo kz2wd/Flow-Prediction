@@ -10,7 +10,7 @@ from space_exploration.models.utils import res_block_gen, up_sampling_block, dis
 
 class A03(PaperBase):
     def __init__(self):
-        super().__init__("A03", "ckpt-16", y_end=64)
+        super().__init__("A03", "ckpt-15", y_end=64)
 
     def generator(self):
         inputs = keras.Input(shape=(*self.channel.prediction_sub_space.sizes(y=1), self.input_channels),

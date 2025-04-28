@@ -1,5 +1,4 @@
 import os
-import re
 import time
 from abc import ABC, abstractmethod
 
@@ -8,13 +7,13 @@ import mlflow
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-
-from FolderManager import FolderManager
-from space_exploration.simulation_channel import SimulationChannel
-
-from visualization.saving_file_names import *
 import vtk
 from vtk.util import numpy_support
+
+from FolderManager import FolderManager
+from space_exploration.data_viz.PlotData import PlotData, save_benchmarks
+from space_exploration.simulation_channel import SimulationChannel
+from visualization.saving_file_names import *
 
 
 class GAN3D(ABC):
@@ -167,10 +166,16 @@ class GAN3D(ABC):
 
         dataset_test = self.make_dataset("test", batch_size=1)["test"]
         self.build()
-        latest_ckpt = tf.train.latest_checkpoint(FolderManager.checkpoints(self))
-        print(f"Found checkpoint: {latest_ckpt}.")
+        ckpt = None
+        if self.checkpoint_number is not None:
+            ckpt = FolderManager.checkpoints(self) / self.checkpoint_number
+        else:
+            latest_ckpt = tf.train.latest_checkpoint(FolderManager.checkpoints(self))
+            print(f"Found checkpoint: {latest_ckpt}.")
+            ckpt = latest_ckpt
+
         # REMOVE EXPECT PARTIAL IF WEIRD RESULTS!
-        status = self.checkpoint.restore(latest_ckpt).expect_partial()
+        status = self.checkpoint.restore(ckpt).expect_partial()
 
         # IF MESSY RESULTS OBTAINED, TRY TO ASSERT CONSUMED !! (it will yield interesting errors :)
         # status.assert_consumed()
@@ -226,17 +231,17 @@ class GAN3D(ABC):
             self.save()
 
     def benchmark(self):
-        benchmark_dataset = FolderManager.benchmark_file(self)
         # MSE along Y
         mse = np.mean((self.y_target_normalized - self.y_predict_normalized) ** 2, axis=(0, 1, 3, 4))
         u_mse = np.mean((self.y_target_normalized[..., 0] - self.y_predict_normalized[..., 0]) ** 2, axis=(0, 1, 3))
         v_mse = np.mean((self.y_target_normalized[..., 1] - self.y_predict_normalized[..., 1]) ** 2, axis=(0, 1, 3))
         w_mse = np.mean((self.y_target_normalized[..., 2] - self.y_predict_normalized[..., 2]) ** 2, axis=(0, 1, 3))
-        with h5py.File(benchmark_dataset, 'w') as f:
-            f.create_dataset('total_mse_y_wise', data=mse, compression='gzip')
-            f.create_dataset('u_mse_y_wise', data=u_mse, compression='gzip')
-            f.create_dataset('v_mse_y_wise', data=v_mse, compression='gzip')
-            f.create_dataset('w_mse_y_wise', data=w_mse, compression='gzip')
+
+        save_benchmarks(self, {PlotData.total_mse_y_wise: mse,
+                               PlotData.u_mse_y_wise: u_mse,
+                               PlotData.v_mse_y_wise: v_mse,
+                               PlotData.w_mse_y_wise: w_mse,
+                               })
 
     def train(self, epochs, saving_freq, batch_size, max_files=-1):
         @tf.function
@@ -374,7 +379,6 @@ class GAN3D(ABC):
         self._export_array_vts(self.y_target_normalized[0], TARGET_FILE_NAME, TARGET_ARRAY_NAME)
         self._export_array_vts(self.y_predict_normalized[0], PREDICTION_FILE_NAME, PREDICTION_ARRAY_NAME)
 
-
     # File name with no extension
     def _export_array_vts(self, target, file_name, array_name=None):
         if array_name is None:
@@ -384,7 +388,8 @@ class GAN3D(ABC):
         for k in range(self.channel.prediction_sub_space.z_size):
             for j in range(self.channel.prediction_sub_space.y_size):
                 for i in range(self.channel.prediction_sub_space.x_size):
-                    points.InsertNextPoint(self.channel.x_dimension[i], self.channel.y_dimension[j], self.channel.z_dimension[k])
+                    points.InsertNextPoint(self.channel.x_dimension[i], self.channel.y_dimension[j],
+                                           self.channel.z_dimension[k])
 
         structured_grid.SetPoints(points)
         structured_grid.SetDimensions(*self.channel.prediction_sub_space.sizes())
@@ -399,4 +404,3 @@ class GAN3D(ABC):
         writer.SetFileName(FolderManager.generated_data(self) / file_name)
         writer.SetInputData(structured_grid)
         writer.Write()
-

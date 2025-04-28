@@ -73,14 +73,15 @@ def create_volume_actor(input_data):
     color = vtk.vtkColorTransferFunction()
     color.SetColorSpaceToHSV()
     if isinstance(input_data, vtkStructuredGrid):
-        color.AddHSVPoint(0.0, 0.8, 1.0, 1.0)
-        color.AddHSVPoint(10, 0.667, 1.0, 1.0)  # Blue
-        color.AddHSVPoint(15.0, 0.333, 1.0, 1.0)  # Green
-        color.AddHSVPoint(20.0, 0.0, 1.0, 1.0)   # Red
 
-        opacity.AddPoint(0.0, 0.3)
-        opacity.AddPoint(1.0, 0.3)
-        opacity.AddPoint(20.0, 0.95)
+        color.AddHSVPoint(0.0, 0.8, 1.0, 1.0)
+        color.AddHSVPoint(1.5, 0.667, 1.0, 1.0)  # Blue
+        color.AddHSVPoint(3.0, 0.333, 1.0, 1.0)  # Green
+        color.AddHSVPoint(5.0, 0.0, 1.0, 1.0)   # Red
+
+        opacity.AddPoint(0.0, 0.4)
+        opacity.AddPoint(1.0, 0.6)
+        opacity.AddPoint(5.0, 0.95)
 
     else:
         color.AddHSVPoint(0.0, 0.667, 1.0, 1.0)  # Blue
@@ -88,7 +89,7 @@ def create_volume_actor(input_data):
         color.AddHSVPoint(8.0, 0.0, 1.0, 1.0)  # Red
 
         opacity.AddPoint(0.0, 0.0)
-        opacity.AddPoint(8.0, 0.95)
+        opacity.AddPoint(3.0, 0.95)
 
     prop = vtk.vtkVolumeProperty()
     prop.SetColor(color)
@@ -117,7 +118,7 @@ class VolumeVisu:
         self.data_source = data_source
         self.volume = create_volume_actor(self.data_source)
         self.renderer = vtk.vtkRenderer()
-        self.renderer.SetBackground(0.1, 0.1, 0.2)
+        self.renderer.SetBackground(0.4, 0.65, 0.6)
         self.renderer.AddVolume(self.volume)
 
     @staticmethod
