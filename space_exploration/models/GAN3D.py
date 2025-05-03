@@ -6,6 +6,7 @@ import h5py
 import mlflow
 import numpy as np
 import vtk
+from torch.utils.data import DataLoader
 from vtk.util import numpy_support
 
 import torch
@@ -15,6 +16,7 @@ import torch.optim as optim
 
 from FolderManager import FolderManager
 from space_exploration.data_viz.PlotData import PlotData, save_benchmarks
+from space_exploration.models.dataset import HDF5Dataset
 from space_exploration.simulation_channel import SimulationChannel
 from visualization.saving_file_names import *
 
@@ -166,79 +168,9 @@ class GAN3D(ABC):
 
     def make_dataset(self, target_folder, batch_size=32, shuffle=True, split=(0.8, 0.1, 0.1),
                      seed=42, max_file_amount=-1):
-        """
-        Create TensorFlow datasets (train, val, test) from a folder of TFRecord files.
-
-        Args:
-            target_folder (str): folder inside tfrecords containing `.tfrecords` files.
-            batch_size (int): Batch size.
-            shuffle (bool): Whether to shuffle records within each dataset.
-            split (tuple): Fractions for (train, val, test) split. Must sum to 1.0.
-            seed (int): Random seed for reproducibility.
-            max_file_amount (int): Maximum number of files to load.
-
-        Returns:
-            dict: {'train': train_ds, 'val': val_ds, 'test': test_ds}
-
-        """
-
-        # Step 1: Gather all TFRecord files
-        folder_path = FolderManager.tfrecords / target_folder
-        record_files = sorted([
-            str(os.path.join(folder_path, file))
-            for file in os.listdir(folder_path)
-            if file.endswith(".tfrecords")
-        ])
-
-        if max_file_amount > 0:
-            record_files = record_files[:max_file_amount]
-
-        if not record_files:
-            raise FileNotFoundError(f"No TFRecord files found in: {folder_path}")
-
-        # Step 2: Split the file list
-        np.random.seed(seed)
-        np.random.shuffle(record_files)
-
-        n = len(record_files)
-        n_train = int(n * split[0])
-        n_val = int(n * split[1])
-
-        train_files = record_files[:n_train]
-        val_files = record_files[n_train:n_train + n_val]
-        test_files = record_files[n_train + n_val:]
-
-        def build_dataset(file_list):
-            if len(file_list) == 0:
-                return None
-            ds = tf.data.Dataset.from_tensor_slices(file_list)
-            ds = ds.interleave(
-                lambda x: tf.data.TFRecordDataset(x),
-                cycle_length=tf.data.AUTOTUNE,
-                num_parallel_calls=tf.data.AUTOTUNE
-            )
-            ds = ds.map(
-                lambda record: self.channel.tf_parser(record),
-                num_parallel_calls=tf.data.AUTOTUNE
-            )
-
-            # Optional filtering
-            def is_valid(x, y):
-                return tf.logical_and(tf.size(x) > 0, tf.size(y) > 0)
-
-            ds = ds.filter(is_valid)
-
-            if shuffle:
-                ds = ds.shuffle(10000)
-            ds = ds.batch(batch_size, drop_remainder=True)
-            ds = ds.prefetch(tf.data.AUTOTUNE)
-            return ds
-
-        return {
-            'train': build_dataset(train_files),
-            'val': build_dataset(val_files),
-            'test': build_dataset(test_files),
-        }
+        dataset = HDF5Dataset(target_folder)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,)
+        return dataloader
 
     def save(self):
         save_dataset = FolderManager.predictions_file(self)
