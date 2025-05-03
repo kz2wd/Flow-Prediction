@@ -6,7 +6,8 @@ import h5py
 import mlflow
 import numpy as np
 import vtk
-from torch.utils.data import DataLoader
+from pyarrow.dataset import dataset
+from torch.utils.data import DataLoader, random_split
 from vtk.util import numpy_support
 
 import torch
@@ -48,9 +49,9 @@ class UpSamplingBlock(nn.Module):
         return x
 
 class Generator(nn.Module):
-    def __init__(self, nx, ny, nz, input_channels, output_channels, n_residual_blocks):
+    def __init__(self, channel: SimulationChannel, input_channels=3, n_residual_blocks=32, output_channels=3):
         super().__init__()
-        self.ny = ny
+        self.ny = channel.prediction_sub_space.y[1]
 
         self.initial = nn.Sequential(
             nn.Conv3d(input_channels, 64, kernel_size=9, stride=1, padding=4),
@@ -61,7 +62,7 @@ class Generator(nn.Module):
         self.mid_conv = nn.Conv3d(64, 64, kernel_size=3, stride=1, padding=1)
 
         up_blocks = []
-        for _ in range(int(np.log2(ny))):
+        for _ in range(int(np.log2(self.ny))):
             up_blocks.append(UpSamplingBlock(64, 256))
         self.up_blocks = nn.Sequential(*up_blocks)
 
@@ -89,7 +90,11 @@ class DiscriminatorBlock(nn.Module):
         return self.block(x)
 
 class Discriminator(nn.Module):
-    def __init__(self, input_channels, nx, ny, nz):
+    def __init__(self, input_channels, channel: SimulationChannel):
+        nx = channel.prediction_sub_space.x[1]
+        ny = channel.prediction_sub_space.y[1]
+        nz = channel.prediction_sub_space.z[1]
+
         super().__init__()
         self.model = nn.Sequential(
             nn.Conv3d(input_channels, 64, kernel_size=3, stride=1, padding=1),
@@ -137,6 +142,7 @@ def discriminator_loss(real_y, fake_y, global_batch_size):
 
     total_loss = 0.5 * (real_loss + fake_loss)
     return total_loss.mean() / global_batch_size
+
 class GAN3D(ABC):
     def __init__(self, name, checkpoint_number, channel: SimulationChannel,
                  n_residual_blocks=32, input_channels=3, output_channels=3, learning_rate=1e-4, ):
@@ -153,24 +159,36 @@ class GAN3D(ABC):
 
         FolderManager.init(self)  # ensure all related folders are created
 
-    @abstractmethod
-    def generator(self):
-        pass
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.generator = Generator(channel)
+        self.discriminator = Discriminator(input_channels, channel)
 
-    @abstractmethod
-    def discriminator(self):
-        pass
+    def make_dataset(self, target_file):
+        return HDF5Dataset(target_file)
 
-    @abstractmethod
-    def generator_loss(self):
-        pass
+    def get_dataloader(self, target_file, batch_size, shuffle=True):
+        dataset = self.make_dataset(target_file)
+        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
+    def get_split_datasets(self, target_file, batch_size, seed=0):
+        dataset = self.make_dataset(target_file)
 
-    def make_dataset(self, target_folder, batch_size=32, shuffle=True, split=(0.8, 0.1, 0.1),
-                     seed=42, max_file_amount=-1):
-        dataset = HDF5Dataset(target_folder)
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,)
-        return dataloader
+        total_size = len(dataset)
+        train_size = int(0.8 * total_size)
+        val_size = int(0.1 * total_size)
+        test_size = total_size - train_size - val_size
+
+        train_dataset, val_dataset, test_dataset = random_split(
+            dataset, [train_size, val_size, test_size],
+            generator=torch.Generator().manual_seed(seed)
+        )
+
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size)
+
+        return train_loader, val_loader, test_loader
+
 
     def save(self):
         save_dataset = FolderManager.predictions_file(self)
@@ -208,10 +226,7 @@ class GAN3D(ABC):
 
     def train(self, epochs, saving_freq, batch_size, max_files=-1):
         # Dataloaders
-        datasets = self.make_dataset("test", batch_size, max_file_amount=max_files)
-        dataset_train = datasets["train"]
-        dataset_valid = datasets["val"]
-        dataset_test = datasets["test"]
+        dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test", batch_size)
 
         def train_step(x_target, y_target):
             self.generator.train()

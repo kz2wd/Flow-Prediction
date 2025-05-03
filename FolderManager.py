@@ -13,12 +13,14 @@ class FolderManager:
     _generated_data = Path("generated_data")
     _logs = Path("logs")
     tfrecords = Path("tfrecords")
+    dataset = Path("dataset")
 
     @staticmethod
     def init(model: 'GAN3D'):
         FolderManager.checkpoints(model).mkdir(parents=True, exist_ok=True)
         FolderManager.generated_data(model).mkdir(parents=True, exist_ok=True)
         FolderManager.logs(model).mkdir(parents=True, exist_ok=True)
+        FolderManager.dataset.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def checkpoints(model: 'GAN3D'):
