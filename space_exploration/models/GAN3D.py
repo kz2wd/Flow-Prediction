@@ -5,17 +5,136 @@ from abc import ABC, abstractmethod
 import h5py
 import mlflow
 import numpy as np
-import tensorflow as tf
-import tensorflow.keras as keras
 import vtk
 from vtk.util import numpy_support
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 
 from FolderManager import FolderManager
 from space_exploration.data_viz.PlotData import PlotData, save_benchmarks
 from space_exploration.simulation_channel import SimulationChannel
 from visualization.saving_file_names import *
 
+class ResBlockGen(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv3d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.prelu = nn.PReLU()
+        self.conv2 = nn.Conv3d(channels, channels, kernel_size=3, stride=1, padding=1)
 
+    def forward(self, x):
+        identity = x
+        out = self.conv1(x)
+        out = self.prelu(out)
+        out = self.conv2(out)
+        return identity + out
+
+class UpSamplingBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.upsample = nn.Upsample(scale_factor=(1, 2, 1), mode='nearest')
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.prelu = nn.PReLU()
+
+    def forward(self, x):
+        x = self.upsample(x)
+        x = self.conv(x)
+        x = self.prelu(x)
+        return x
+
+class Generator(nn.Module):
+    def __init__(self, nx, ny, nz, input_channels, output_channels, n_residual_blocks):
+        super().__init__()
+        self.ny = ny
+
+        self.initial = nn.Sequential(
+            nn.Conv3d(input_channels, 64, kernel_size=9, stride=1, padding=4),
+            nn.PReLU()
+        )
+
+        self.res_blocks = nn.Sequential(*[ResBlockGen(64) for _ in range(n_residual_blocks)])
+        self.mid_conv = nn.Conv3d(64, 64, kernel_size=3, stride=1, padding=1)
+
+        up_blocks = []
+        for _ in range(int(np.log2(ny))):
+            up_blocks.append(UpSamplingBlock(64, 256))
+        self.up_blocks = nn.Sequential(*up_blocks)
+
+        self.output_conv = nn.Conv3d(256, output_channels, kernel_size=9, stride=1, padding=4)
+
+    def forward(self, x):
+        x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
+        initial = self.initial(x)
+        x = self.res_blocks(initial)
+        x = self.mid_conv(x)
+        x = x + initial
+        x = self.up_blocks(x)
+        x = self.output_conv(x)
+        return x
+
+class DiscriminatorBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1),
+            nn.LeakyReLU(0.2)
+        )
+
+    def forward(self, x):
+        return self.block(x)
+
+class Discriminator(nn.Module):
+    def __init__(self, input_channels, nx, ny, nz):
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Conv3d(input_channels, 64, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2),
+            DiscriminatorBlock(64, 64, stride=4),
+            DiscriminatorBlock(64, 128, stride=1),
+            DiscriminatorBlock(128, 128, stride=2),
+            DiscriminatorBlock(128, 256, stride=1),
+            DiscriminatorBlock(256, 256, stride=2),
+            DiscriminatorBlock(256, 512, stride=1),
+            DiscriminatorBlock(512, 512, stride=2),
+        )
+        flatten_size = (nx // 8) * (ny // 8) * (nz // 8) * 512
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(flatten_size, 1024),
+            nn.LeakyReLU(0.2),
+            nn.Linear(1024, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
+        x = self.model(x)
+        return self.fc(x)
+
+# Loss functions
+def generator_loss(fake_y, y_pred, y_true, batch_size, global_batch_size, nx, ny, nz):
+    adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
+    adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
+    adversarial_loss = adversarial_loss.view(batch_size, 1, 1, 1)
+
+    content_loss = F.mse_loss(y_pred, y_true, reduction='none')
+
+    total_loss = content_loss + 1e-3 * adversarial_loss
+    scale_loss = total_loss.sum(dim=(1, 2, 3)) / (global_batch_size * nx * ny * nz)
+    return scale_loss
+
+def discriminator_loss(real_y, fake_y, global_batch_size):
+    real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
+    fake_labels = torch.rand_like(fake_y) * 0.2
+
+    real_loss = F.binary_cross_entropy(real_y, real_labels, reduction='none')
+    fake_loss = F.binary_cross_entropy(fake_y, fake_labels, reduction='none')
+
+    total_loss = 0.5 * (real_loss + fake_loss)
+    return total_loss.mean() / global_batch_size
 class GAN3D(ABC):
     def __init__(self, name, checkpoint_number, channel: SimulationChannel,
                  n_residual_blocks=32, input_channels=3, output_channels=3, learning_rate=1e-4, ):
@@ -44,33 +163,6 @@ class GAN3D(ABC):
     def generator_loss(self):
         pass
 
-    @abstractmethod
-    def discriminator_loss(self):
-        pass
-
-    def generator_optimizer(self):
-        return keras.optimizers.Adam(learning_rate=self.learning_rate)
-
-    def discriminator_optimizer(self):
-        return keras.optimizers.Adam(learning_rate=self.learning_rate)
-
-    def build(self):
-        if self.already_built == True:
-            return
-        self.already_built = True
-        self._generator = self.generator()
-        self._generator_loss = self.generator_loss()
-        self._generator_optimizer = self.generator_optimizer()
-        self._discriminator = self.discriminator()
-        self._discriminator_loss = self.discriminator_loss()
-        self._discriminator_optimizer = self.discriminator_optimizer()
-
-        self.checkpoint = tf.train.Checkpoint(
-            generator_optimizer=self._generator_optimizer,
-            discriminator_optimizer=self._discriminator_optimizer,
-            generator=self._generator,
-            discriminator=self._discriminator
-        )
 
     def make_dataset(self, target_folder, batch_size=32, shuffle=True, split=(0.8, 0.1, 0.1),
                      seed=42, max_file_amount=-1):
@@ -148,67 +240,6 @@ class GAN3D(ABC):
             'test': build_dataset(test_files),
         }
 
-    def test(self, test_sample_amount=50):
-        physical_devices = tf.config.list_physical_devices('GPU')
-        available_GPUs = len(physical_devices)
-        print('Using TensorFlow version: ', tf.__version__, ', GPU:', available_GPUs)
-        print('Using Keras version: ', tf.keras.__version__)
-        if physical_devices:
-            try:
-                for gpu in physical_devices:
-                    tf.config.experimental.set_memory_growth(gpu, True)
-            except RuntimeError as e:
-                print(e)
-
-        # train & test folder are inversed bcause of the amount of data they contained,
-        # train folder is 1/10th of test size, there is a good reason explained in the readme of original code
-        # dataset_full, _, _ = self.generate_datasets("train", batch_size=1, train_split=1.0)
-
-        dataset_test = self.make_dataset("test", batch_size=1)["test"]
-        self.build()
-        ckpt = None
-        if self.checkpoint_number is not None:
-            ckpt = FolderManager.checkpoints(self) / self.checkpoint_number
-        else:
-            latest_ckpt = tf.train.latest_checkpoint(FolderManager.checkpoints(self))
-            print(f"Found checkpoint: {latest_ckpt}.")
-            ckpt = latest_ckpt
-
-        # REMOVE EXPECT PARTIAL IF WEIRD RESULTS!
-        status = self.checkpoint.restore(ckpt).expect_partial()
-
-        # IF MESSY RESULTS OBTAINED, TRY TO ASSERT CONSUMED !! (it will yield interesting errors :)
-        # status.assert_consumed()
-
-        # samples, stream wise resolution, wall normal wise resolution, span wise resolution, velocities.
-        # velocities -> 0, u, stream wise | 1, v, wall normal wise | 2, w, spawn wise
-        self.x_target_normalized = np.zeros((test_sample_amount, *self.channel.prediction_sub_space.sizes(y=1), 3),
-                                            np.float32)
-        self.y_target_normalized = np.zeros(
-            (test_sample_amount, *self.channel.prediction_sub_space.sizes(), 3), np.float32)
-        self.y_predict_normalized = np.zeros(
-            (test_sample_amount, *self.channel.prediction_sub_space.sizes(), 3), np.float32)
-
-        itr = iter(dataset_test)
-        try:
-            for i in range(test_sample_amount):
-                if float.is_integer(i / 50):
-                    print(i)
-                # print(idx)
-                x, y = next(itr)
-
-                self.x_target_normalized[i] = x.numpy()
-                self.y_target_normalized[i] = y.numpy()
-
-                self.y_predict_normalized[i] = self._generator(np.expand_dims(self.x_target_normalized[i], axis=0),
-                                                               training=False)
-        except Exception as e:
-            print(e)
-
-        mse = np.mean((self.y_target_normalized - self.y_predict_normalized) ** 2)
-        print(mse)
-        print(f'Predict mean: {np.mean(self.y_predict_normalized)}, std: {np.std(self.y_predict_normalized)}')
-
     def save(self):
         save_dataset = FolderManager.predictions_file(self)
         with h5py.File(save_dataset, 'w') as f:
@@ -244,71 +275,54 @@ class GAN3D(ABC):
                                })
 
     def train(self, epochs, saving_freq, batch_size, max_files=-1):
-        @tf.function
-        def train_step(x_target, y_target):
-            """
-            Perform one training step for both generator and discriminator.
-            """
-            with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-                # Forward pass through the generator
-                y_pred = self._generator(x_target, training=True)
-
-                # Discriminator predictions for real and fake data
-                real_output = self._discriminator(y_target, training=True)
-                fake_output = self._discriminator(y_pred, training=True)
-
-                # Compute losses
-                gen_loss = self._generator_loss(fake_output, y_pred, y_target)
-                disc_loss = self._discriminator_loss(real_output, fake_output)
-
-            # Compute gradients
-            gen_gradients = gen_tape.gradient(gen_loss, self._generator.trainable_variables)
-            disc_gradients = disc_tape.gradient(disc_loss, self._discriminator.trainable_variables)
-
-            # Apply gradients
-            self._generator_optimizer.apply_gradients(zip(gen_gradients, self._generator.trainable_variables))
-            self._discriminator_optimizer.apply_gradients(zip(disc_gradients, self._discriminator.trainable_variables))
-
-            return gen_loss, disc_loss
-
-        @tf.function
-        def valid_step(x_target, y_target):
-            """
-            Perform one validation step (no gradients applied).
-            """
-            # Forward pass only (no gradient computation)
-            y_pred = self._generator(x_target, training=False)
-
-            real_output = self._discriminator(y_target, training=False)
-            fake_output = self._discriminator(y_pred, training=False)
-
-            # Compute losses
-            gen_loss = self._generator_loss(fake_output, y_pred, y_target)
-            disc_loss = self._discriminator_loss(real_output, fake_output)
-
-            return gen_loss, disc_loss
-
+        # Dataloaders
         datasets = self.make_dataset("test", batch_size, max_file_amount=max_files)
         dataset_train = datasets["train"]
         dataset_valid = datasets["val"]
         dataset_test = datasets["test"]
 
-        self.build()
+        def train_step(x_target, y_target):
+            self.generator.train()
+            self.discriminator.train()
 
-        # Metrics
-        train_gen_loss = tf.metrics.Mean()
-        train_disc_loss = tf.metrics.Mean()
-        valid_gen_loss = tf.metrics.Mean()
-        valid_disc_loss = tf.metrics.Mean()
+            y_pred = self.generator(x_target)
+
+            real_output = self.discriminator(y_target)
+            fake_output = self.discriminator(y_pred)
+
+            gen_loss = self.generator_loss(fake_output, y_pred, y_target)
+            disc_loss = self.discriminator_loss(real_output, fake_output)
+
+            self.generator_optimizer.zero_grad()
+            gen_loss.backward(retain_graph=True)
+            self.generator_optimizer.step()
+
+            self.discriminator_optimizer.zero_grad()
+            disc_loss.backward()
+            self.discriminator_optimizer.step()
+
+            return gen_loss.item(), disc_loss.item()
+
+        def valid_step(x_target, y_target):
+            self.generator.eval()
+            self.discriminator.eval()
+            with torch.no_grad():
+                y_pred = self.generator(x_target)
+                real_output = self.discriminator(y_target)
+                fake_output = self.discriminator(y_pred)
+
+                gen_loss = self.generator_loss(fake_output, y_pred, y_target)
+                disc_loss = self.discriminator_loss(real_output, fake_output)
+
+            return gen_loss.item(), disc_loss.item()
 
         # Paths
         log_folder = FolderManager.logs(self)
         log_folder.mkdir(parents=True, exist_ok=True)
 
         checkpoint_dir = FolderManager.checkpoints(self)
-        checkpoint_prefix = str(checkpoint_dir / "ckpt")
+        checkpoint_prefix = checkpoint_dir / "ckpt"
 
-        # Init log file
         log_path = log_folder / f"log_{self.name}.log"
         with log_path.open("w") as fd:
             fd.write("epoch,gen_loss,disc_loss,val_gen_loss,val_disc_loss,time\n")
@@ -316,8 +330,6 @@ class GAN3D(ABC):
         start_time = time.time()
 
         with mlflow.start_run(run_name=self.name):
-
-            # Optional: add experiment parameters/tags
             mlflow.set_tag("model_type", "GAN")
             mlflow.log_params({
                 "epochs": epochs,
@@ -326,51 +338,55 @@ class GAN3D(ABC):
             })
 
             for epoch in range(1, epochs + 1):
-                # Reset metrics
-                train_gen_loss.reset_state()
-                train_disc_loss.reset_state()
-                valid_gen_loss.reset_state()
-                valid_disc_loss.reset_state()
+                train_gen_losses = []
+                train_disc_losses = []
+                valid_gen_losses = []
+                valid_disc_losses = []
 
-                # Training loop
                 for x_target, y_target in dataset_train:
+                    x_target, y_target = x_target.to(self.device), y_target.to(self.device)
                     gen_loss, disc_loss = train_step(x_target, y_target)
-                    train_gen_loss.update_state(gen_loss)
-                    train_disc_loss.update_state(disc_loss)
+                    train_gen_losses.append(gen_loss)
+                    train_disc_losses.append(disc_loss)
 
-                # Validation loop
                 for x_target, y_target in dataset_valid:
+                    x_target, y_target = x_target.to(self.device), y_target.to(self.device)
                     gen_loss, disc_loss = valid_step(x_target, y_target)
-                    valid_gen_loss.update_state(gen_loss)
-                    valid_disc_loss.update_state(disc_loss)
+                    valid_gen_losses.append(gen_loss)
+                    valid_disc_losses.append(disc_loss)
 
-                # Save checkpoint
+                mean_train_gen_loss = np.mean(train_gen_losses)
+                mean_train_disc_loss = np.mean(train_disc_losses)
+                mean_valid_gen_loss = np.mean(valid_gen_losses)
+                mean_valid_disc_loss = np.mean(valid_disc_losses)
+
                 if epoch % saving_freq == 0:
-                    self.checkpoint.save(file_prefix=checkpoint_prefix)
+                    torch.save({
+                        'epoch': epoch,
+                        'generator_state_dict': self.generator.state_dict(),
+                        'discriminator_state_dict': self.discriminator.state_dict(),
+                        'gen_optimizer_state_dict': self.generator_optimizer.state_dict(),
+                        'disc_optimizer_state_dict': self.discriminator_optimizer.state_dict()
+                    }, checkpoint_prefix.with_suffix(f".e{epoch}.pt"))
 
-                # Log to file
                 elapsed = time.time() - start_time
                 with log_path.open("a") as fd:
-                    fd.write(
-                        f"{epoch},{train_gen_loss.result().numpy():.6f},{train_disc_loss.result().numpy():.6f},"
-                        f"{valid_gen_loss.result().numpy():.6f},{valid_disc_loss.result().numpy():.6f},{elapsed:.2f}\n")
+                    fd.write(f"{epoch},{mean_train_gen_loss:.6f},{mean_train_disc_loss:.6f},"
+                             f"{mean_valid_gen_loss:.6f},{mean_valid_disc_loss:.6f},{elapsed:.2f}\n")
 
-                # Log to MLflow
                 mlflow.log_metrics({
-                    "train_gen_loss": train_gen_loss.result().numpy(),
-                    "train_disc_loss": train_disc_loss.result().numpy(),
-                    "val_gen_loss": valid_gen_loss.result().numpy(),
-                    "val_disc_loss": valid_disc_loss.result().numpy()
+                    "train_gen_loss": mean_train_gen_loss,
+                    "train_disc_loss": mean_train_disc_loss,
+                    "val_gen_loss": mean_valid_gen_loss,
+                    "val_disc_loss": mean_valid_disc_loss
                 }, step=epoch)
 
                 print(f"[Epoch {epoch:04d}/{epochs:04d}] "
-                      f"gen_loss: {train_gen_loss.result().numpy():.4f}, "
-                      f"disc_loss: {train_disc_loss.result().numpy():.4f}, "
-                      f"val_gen_loss: {valid_gen_loss.result().numpy():.4f}, "
-                      f"val_disc_loss: {valid_disc_loss.result().numpy():.4f}, "
+                      f"gen_loss: {mean_train_gen_loss:.4f}, "
+                      f"disc_loss: {mean_train_disc_loss:.4f}, "
+                      f"val_gen_loss: {mean_valid_gen_loss:.4f}, "
+                      f"val_disc_loss: {mean_valid_disc_loss:.4f}, "
                       f"time: {elapsed:.2f}s")
-
-        return
 
     # WARNING : Correct type here should be rectilinear grid
     # but for some reason my Paraview couldn't display it as a Volume, So I use StructuredGrid

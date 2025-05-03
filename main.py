@@ -12,6 +12,7 @@ def test():
     model = A03()
     # model.lazy_test(10)
     # model.benchmark()
+    model.train()
     Plotter.plot_mse(model, "mse")
 
 
