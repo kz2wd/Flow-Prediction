@@ -10,9 +10,10 @@ from space_exploration.models.C.C06 import C06
 def test():
 
     model = A03()
+    model.convert_dataset()
     # model.lazy_test(10)
     # model.benchmark()
-    Plotter.plot_mse(model, "mse")
+    # Plotter.plot_mse(model, "mse")
 
 
 if __name__ == '__main__':

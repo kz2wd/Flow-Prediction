@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 import vtk
+from tqdm import tqdm
 from vtk.util import numpy_support
 
 from FolderManager import FolderManager
@@ -147,6 +148,25 @@ class GAN3D(ABC):
             'val': build_dataset(val_files),
             'test': build_dataset(test_files),
         }
+
+
+    def convert_dataset(self):
+        dataset = self.make_dataset("test", 1, shuffle=False, split=(1.0, 0, 0))["train"]
+
+        x_data, y_data = [], []
+
+        for i, (x, y) in tqdm(enumerate(dataset), total=100000):
+            x_data.append(x.numpy())
+            y_data.append(y.numpy())
+
+        x_data = np.array(x_data)
+        y_data = np.array(y_data)
+
+        with h5py.File("dataset/test.hdf5", "w") as f:
+            f.create_dataset("x", data=x_data, compression="gzip")
+            f.create_dataset("y", data=y_data, compression="gzip")
+
+        print(f"Saved {len(x_data)} samples to dataset/test.hdf5")
 
     def test(self, test_sample_amount=50):
         physical_devices = tf.config.list_physical_devices('GPU')

@@ -19,8 +19,12 @@ class SimulationChannel:
         self.y_dimension = np.load(FolderManager.channel_coordinates / "coordY.npy")
         self.z_dimension = np.arange(z_resolution) * z_length / z_resolution
         self.prediction_sub_space: PredictionSubSpace = prediction_sub_space
-
+        self.channel_y_scaling = 200
         self.data = ChannelData(channel_data_file, self.prediction_sub_space)
+
+    @property
+    def y_channel(self):
+        return self.channel_y_scaling * self.y_dimension[self.prediction_sub_space.y[0]: self.prediction_sub_space.y[1]]
 
     @tf.function
     def tf_parser(self, rec):
