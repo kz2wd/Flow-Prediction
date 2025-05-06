@@ -3,10 +3,10 @@ from torch.utils.data import Dataset
 import h5py
 
 class HDF5Dataset(Dataset):
-    def __init__(self, file_path):
+    def __init__(self, file_path, amount=-1):
         self.file = h5py.File(file_path, "r")
-        self.x = self.file["x"]
-        self.y = self.file["y"]
+        self.x = self.file['x'][:amount, ...]
+        self.y = self.file['y'][:amount, ...]
 
     def __len__(self):
         return len(self.x)

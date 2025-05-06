@@ -164,15 +164,15 @@ class GAN3D(ABC):
         self.generator = Generator(channel)
         self.discriminator = Discriminator(input_channels, channel)
 
-    def make_dataset(self, target_file):
-        return HDF5Dataset(target_file)
+    def make_dataset(self, target_file, sample_amount=-1):
+        return HDF5Dataset(target_file, sample_amount)
 
     def get_dataloader(self, target_file, batch_size, shuffle=True):
         dataset = self.make_dataset(target_file)
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
-    def get_split_datasets(self, target_file, batch_size, seed=0):
-        dataset = self.make_dataset(target_file)
+    def get_split_datasets(self, target_file, batch_size, seed=0, sample_amount=-1):
+        dataset = self.make_dataset(target_file, sample_amount)
 
         total_size = len(dataset)
         train_size = int(0.8 * total_size)
@@ -225,7 +225,7 @@ class GAN3D(ABC):
                                PlotData.w_mse_y_wise: w_mse,
                                })
 
-    def train(self, epochs, saving_freq, batch_size):
+    def train(self, epochs, saving_freq, batch_size, sample_amount=-1):
         # Dataloaders
         dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test.hdf5", batch_size)
         nx, ny, nz = self.channel.prediction_sub_space.x_size, self.channel.prediction_sub_space.y_size, self.channel.prediction_sub_space.z_size

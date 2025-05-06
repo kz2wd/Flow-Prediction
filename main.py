@@ -24,7 +24,7 @@ def test():
     model = GAN3D("torch_test", "ckpt-1", channel)
     # model.test(10)
     # model.benchmark()
-    model.train(1, 1, 32)
+    model.train(1, 1, 4, 32)
     # Plotter.plot_mse(model, "mse")
 
 
