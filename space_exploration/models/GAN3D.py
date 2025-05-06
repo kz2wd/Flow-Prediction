@@ -159,7 +159,7 @@ class GAN3D(ABC):
 
         FolderManager.init(self)  # ensure all related folders are created
 
-        self.device = torch.cuda.device(0)  # if we cannot get cuda, don't even try...
+        self.device = torch.device("cuda")  # if we cannot get cuda, don't even try...
 
         self.generator = Generator(channel)
         self.discriminator = Discriminator(input_channels, channel)
