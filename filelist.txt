@@ -1,4 +1,0 @@
-space_exploration
-visualization
-FolderManager.py
-main.py

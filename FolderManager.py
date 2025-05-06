@@ -1,19 +1,22 @@
 from pathlib import Path
 
-
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from space_exploration.models.GAN3D import GAN3D
 
 
 class FolderManager:
-    channel_coordinates = Path("channel_coordinates")
-    _checkpoints = Path("checkpoints")
-    _generated_data = Path("generated_data")
-    _logs = Path("logs")
-    tfrecords = Path("tfrecords")
-    dataset = Path("dataset")
+    FOLDER_PREFIX_FILE = Path("PREFIX_LOCATION.txt")
+    FOLDER_PREFIX = ""
+    if FOLDER_PREFIX_FILE.is_file():
+        FOLDER_PREFIX = Path(FOLDER_PREFIX_FILE).read_text().strip("\n")
+    channel_coordinates = Path(FOLDER_PREFIX) / "channel_coordinates"
+    _checkpoints = Path(FOLDER_PREFIX) / "checkpoints"
+    _generated_data = Path(FOLDER_PREFIX) / "generated_data"
+    _logs = Path(FOLDER_PREFIX) / "logs"
+    tfrecords = Path(FOLDER_PREFIX) / "tfrecords"
+    dataset = Path(FOLDER_PREFIX) / "dataset"
 
     @staticmethod
     def init(model: 'GAN3D'):
