@@ -159,7 +159,8 @@ class GAN3D(ABC):
 
         FolderManager.init(self)  # ensure all related folders are created
 
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.cuda.device(0)  # if we cannot get cuda, don't even try...
+
         self.generator = Generator(channel)
         self.discriminator = Discriminator(input_channels, channel)
 
@@ -226,7 +227,7 @@ class GAN3D(ABC):
 
     def train(self, epochs, saving_freq, batch_size):
         # Dataloaders
-        dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test", batch_size)
+        dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test.hdf5", batch_size)
         nx, ny, nz = self.channel.prediction_sub_space.x_size, self.channel.prediction_sub_space.y_size, self.channel.prediction_sub_space.z_size
         self.generator_loss = lambda real_y, fake_y, y_true: generator_loss(real_y, fake_y, y_true, batch_size, 1, nx, ny, nz)
         self.discriminator_loss = lambda real_y, fake_y: discriminator_loss(real_y, fake_y, 1)
