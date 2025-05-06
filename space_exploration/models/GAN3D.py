@@ -163,14 +163,14 @@ class GAN3D(ABC):
         self.generator = Generator(channel)
         self.discriminator = Discriminator(input_channels, channel)
 
-    def make_dataset(self, target_file, sample_amount=-1):
+    def make_dataset(self, target_file, sample_amount):
         return HDF5Dataset(target_file, sample_amount)
 
     def get_dataloader(self, target_file, batch_size, shuffle=True):
         dataset = self.make_dataset(target_file)
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
-    def get_split_datasets(self, target_file, batch_size, seed=0, sample_amount=-1):
+    def get_split_datasets(self, target_file, batch_size, sample_amount, seed=0):
         dataset = self.make_dataset(target_file, sample_amount)
 
         total_size = len(dataset)
@@ -226,18 +226,23 @@ class GAN3D(ABC):
 
     def train(self, epochs, saving_freq, batch_size, sample_amount=-1):
         # Dataloaders
-        dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test.hdf5", batch_size)
+        print("starting train")
+        dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test.hdf5", batch_size, sample_amount)
+        print("established dataset")
         nx, ny, nz = self.channel.prediction_sub_space.x_size, self.channel.prediction_sub_space.y_size, self.channel.prediction_sub_space.z_size
         self.generator_loss = lambda real_y, fake_y, y_true: generator_loss(real_y, fake_y, y_true, batch_size, 1, nx, ny, nz)
         self.discriminator_loss = lambda real_y, fake_y: discriminator_loss(real_y, fake_y, 1)
-
+        print("established losses")
         self.generator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
         self.discriminator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
+        print("established optimizers")
 
         def train_step(x_target, y_target):
+            print("starting train step")
             self.generator.train()
             self.discriminator.train()
 
+            print("generating output")
             y_pred = self.generator(x_target)
 
             real_output = self.discriminator(y_target)
@@ -281,7 +286,7 @@ class GAN3D(ABC):
             fd.write("epoch,gen_loss,disc_loss,val_gen_loss,val_disc_loss,time\n")
 
         start_time = time.time()
-
+        print('real start')
         with mlflow.start_run(run_name=self.name):
             mlflow.set_tag("model_type", "GAN")
             mlflow.log_params({
@@ -289,15 +294,18 @@ class GAN3D(ABC):
                 "saving_freq": saving_freq,
                 "model_name": self.name
             })
-
+            print('mlflow enable')
             for epoch in range(1, epochs + 1):
+                print("epoch {}".format(epoch))
                 train_gen_losses = []
                 train_disc_losses = []
                 valid_gen_losses = []
                 valid_disc_losses = []
 
                 for x_target, y_target in dataset_train:
+                    print("batching...")
                     x_target, y_target = x_target.to(self.device), y_target.to(self.device)
+                    print("sent to device")
                     gen_loss, disc_loss = train_step(x_target, y_target)
                     train_gen_losses.append(gen_loss)
                     train_disc_losses.append(disc_loss)

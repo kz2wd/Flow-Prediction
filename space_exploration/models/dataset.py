@@ -4,9 +4,12 @@ import h5py
 
 class HDF5Dataset(Dataset):
     def __init__(self, file_path, amount=-1):
+        print("opening dataset file")
+        print("using amount:", amount)
         self.file = h5py.File(file_path, "r")
         self.x = self.file['x'][:amount, ...]
         self.y = self.file['y'][:amount, ...]
+        print("dataset initialized")
 
     def __len__(self):
         return len(self.x)
