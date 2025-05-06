@@ -160,8 +160,8 @@ class GAN3D(ABC):
 
         self.device = torch.device("cuda")  # if we cannot get cuda, don't even try...
 
-        self.generator = Generator(channel)
-        self.discriminator = Discriminator(input_channels, channel)
+        self.generator = Generator(channel).to(self.device)
+        self.discriminator = Discriminator(input_channels, channel).to(self.device)
 
     def make_dataset(self, target_file, sample_amount):
         return HDF5Dataset(target_file, sample_amount)

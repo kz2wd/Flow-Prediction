@@ -1,3 +1,4 @@
+import h5py
 import numpy as np
 
 from FolderManager import FolderManager
@@ -20,7 +21,21 @@ def test():
     model.train(1, 1, 4, 32)
     # Plotter.plot_mse(model, "mse")
 
+def fix_dataset():
+    with h5py.File(FolderManager.dataset / "test_fixed.hdf5", 'r') as f:
+        X = f['x'][...]
+        Y = f['y'][...]
+        # X = np.squeeze(f['x'], axis=1)
+        # Y = np.squeeze(f['y'], axis=1)
+        print("X shape: ", X.shape)
+        print("Y shape: ", Y.shape)
+
+        input("Enter to continue")
+        with h5py.File(FolderManager.dataset / "test_fixed.hdf5", 'w') as fixed:
+            fixed.create_dataset('x', data=X)
+            fixed.create_dataset('y', data=Y)
 
 if __name__ == '__main__':
     # test_multiple()
     test()
+    # fix_dataset()

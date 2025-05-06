@@ -7,6 +7,10 @@ class HDF5Dataset(Dataset):
         print("opening dataset file")
         print("using amount:", amount)
         self.file = h5py.File(file_path, "r")
+        print(self.file.keys())
+        print(self.file['x'].shape)
+        print(self.file['y'].shape)
+        print(self.file['x'])
         self.x = self.file['x'][:amount, ...]
         self.y = self.file['y'][:amount, ...]
         print("dataset initialized")
