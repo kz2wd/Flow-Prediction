@@ -1,4 +1,3 @@
-import os
 import time
 from abc import ABC, abstractmethod
 
@@ -6,7 +5,6 @@ import h5py
 import mlflow
 import numpy as np
 import vtk
-from pyarrow.dataset import dataset
 from torch.utils.data import DataLoader, random_split
 from vtk.util import numpy_support
 
@@ -69,6 +67,7 @@ class Generator(nn.Module):
         self.output_conv = nn.Conv3d(256, output_channels, kernel_size=9, stride=1, padding=4)
 
     def forward(self, x):
+        print(x.shape)
         x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
         initial = self.initial(x)
         x = self.res_blocks(initial)
