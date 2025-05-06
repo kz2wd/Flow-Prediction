@@ -224,9 +224,15 @@ class GAN3D(ABC):
                                PlotData.w_mse_y_wise: w_mse,
                                })
 
-    def train(self, epochs, saving_freq, batch_size, max_files=-1):
+    def train(self, epochs, saving_freq, batch_size):
         # Dataloaders
         dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test", batch_size)
+        nx, ny, nz = self.channel.prediction_sub_space.x_size, self.channel.prediction_sub_space.y_size, self.channel.prediction_sub_space.z_size
+        self.generator_loss = lambda real_y, fake_y, y_true: generator_loss(real_y, fake_y, y_true, batch_size, 1, nx, ny, nz)
+        self.discriminator_loss = lambda real_y, fake_y: discriminator_loss(real_y, fake_y, 1)
+
+        self.generator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
+        self.discriminator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
 
         def train_step(x_target, y_target):
             self.generator.train()
