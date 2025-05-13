@@ -31,7 +31,8 @@ class ResBlockGen(nn.Module):
         out = self.conv1(x)
         out = self.prelu(out)
         out = self.conv2(out)
-        return identity + out
+        out = out + identity
+        return out
 
 class UpSamplingBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -56,37 +57,45 @@ class Generator(nn.Module):
             nn.PReLU()
         )
 
-        self.res_blocks = nn.Sequential(*[ResBlockGen(64) for _ in range(n_residual_blocks)])
-        self.mid_conv = nn.Conv3d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.up_sample_1 = UpSamplingBlock(64, 64)
+        res_block = []
+        up_sampling = []
 
-        up_blocks = []
-        for _ in range(int(np.log2(self.ny))):
-            up_blocks.append(UpSamplingBlock(64, 256))
-        self.up_blocks = nn.Sequential(*up_blocks)
+        for index in range(n_residual_blocks):
+            res_block.append(ResBlockGen(64))
+            if index in [6, 12, 18, 24, 30]:
+                res_block.append(UpSamplingBlock(64, 64))
+                up_sampling.append(nn.Upsample(scale_factor=(1, 2, 1), mode='nearest'))
+
+        self.res_block = nn.Sequential(*res_block)
+        self.up_sampling = nn.Sequential(*up_sampling)
+
+        self.conv2 = nn.Conv3d(64, 256, kernel_size=3, stride=1, padding=1)
 
         self.output_conv = nn.Conv3d(256, output_channels, kernel_size=9, stride=1, padding=4)
 
     def forward(self, x):
-        print(x.shape)
         x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
-        initial = self.initial(x)
-        x = self.res_blocks(initial)
-        x = self.mid_conv(x)
-        x = x + initial
-        x = self.up_blocks(x)
+        x = self.initial(x)
+        x = self.up_sample_1(x)
+        up_samp = self.up_sampling(x)
+        x = self.res_block(x)
+        x = x + up_samp
+        x = self.conv2(x)
         x = self.output_conv(x)
+        x = x.permute(0, 2, 3, 4, 1)  # put it back ...
         return x
 
 class DiscriminatorBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
         super().__init__()
-        self.block = nn.Sequential(
-            nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1),
-            nn.LeakyReLU(0.2)
-        )
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.relu = nn.LeakyReLU(0.2)
 
     def forward(self, x):
-        return self.block(x)
+        x = self.conv(x)
+        x = self.relu(x)
+        return x
 
 class Discriminator(nn.Module):
     def __init__(self, input_channels, channel: SimulationChannel):
@@ -98,18 +107,22 @@ class Discriminator(nn.Module):
         self.model = nn.Sequential(
             nn.Conv3d(input_channels, 64, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2),
-            DiscriminatorBlock(64, 64, stride=4),
-            DiscriminatorBlock(64, 128, stride=1),
-            DiscriminatorBlock(128, 128, stride=2),
-            DiscriminatorBlock(128, 256, stride=1),
-            DiscriminatorBlock(256, 256, stride=2),
-            DiscriminatorBlock(256, 512, stride=1),
-            DiscriminatorBlock(512, 512, stride=2),
-        )
-        flatten_size = (nx // 8) * (ny // 8) * (nz // 8) * 512
-        self.fc = nn.Sequential(
+            nn.Conv3d(64, 64, kernel_size=3, stride=4, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv3d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv3d(128, 128, kernel_size=3, stride=2, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv3d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv3d(256, 256, kernel_size=3, stride=2, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv3d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv3d(512, 512, kernel_size=3, stride=2, padding=1),
+            nn.LeakyReLU(0.2),
             nn.Flatten(),
-            nn.Linear(flatten_size, 1024),
+            nn.Linear(nx // 16 * ny // 16 * nz // 16 * 512, 1024),
             nn.LeakyReLU(0.2),
             nn.Linear(1024, 1),
             nn.Sigmoid()
@@ -118,19 +131,22 @@ class Discriminator(nn.Module):
     def forward(self, x):
         x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
         x = self.model(x)
-        return self.fc(x)
+        return x
 
 # Loss functions
 def generator_loss(fake_y, y_pred, y_true, batch_size, global_batch_size, nx, ny, nz):
-    adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
-    adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
-    adversarial_loss = adversarial_loss.view(batch_size, 1, 1, 1)
+    # adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
+    # adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
+    # adversarial_loss = adversarial_loss.view(batch_size, 1, 1, 1)
 
     content_loss = F.mse_loss(y_pred, y_true, reduction='none')
+    print("Losses")
+    print(content_loss.shape)  # (4, 64, 64, 64, 3)
+    # print(adversarial_loss.shape)  # (4, 1, 1, 1) -> misshape
 
-    total_loss = content_loss + 1e-3 * adversarial_loss
+    total_loss = content_loss #+ 1e-3 * adversarial_loss
     scale_loss = total_loss.sum(dim=(1, 2, 3)) / (global_batch_size * nx * ny * nz)
-    return scale_loss
+    return scale_loss.mean()
 
 def discriminator_loss(real_y, fake_y, global_batch_size):
     real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
@@ -255,9 +271,9 @@ class GAN3D(ABC):
             gen_loss.backward(retain_graph=True)
             self.generator_optimizer.step()
 
-            self.discriminator_optimizer.zero_grad()
-            disc_loss.backward()
-            self.discriminator_optimizer.step()
+            # self.discriminator_optimizer.zero_grad()
+            # disc_loss.backward()
+            # self.discriminator_optimizer.step()
 
             return gen_loss.item(), disc_loss.item()
 
@@ -286,6 +302,7 @@ class GAN3D(ABC):
             fd.write("epoch,gen_loss,disc_loss,val_gen_loss,val_disc_loss,time\n")
 
         start_time = time.time()
+        torch.autograd.set_detect_anomaly(True)
         print('real start')
         with mlflow.start_run(run_name=self.name):
             mlflow.set_tag("model_type", "GAN")

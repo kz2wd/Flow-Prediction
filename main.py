@@ -28,4 +28,4 @@ def plot():
     Plotter.plot_contours(model, "")
 
 if __name__ == '__main__':
-    plot()
+    test()
