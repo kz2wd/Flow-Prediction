@@ -137,18 +137,13 @@ class Discriminator(nn.Module):
 
 # Loss functions
 def generator_loss(fake_y, y_pred, y_true, batch_size, global_batch_size, nx, ny, nz):
-    # adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
-    # adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
-    # adversarial_loss = adversarial_loss.view(batch_size, 1, 1, 1)
+    adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
+    adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
 
-    content_loss = F.mse_loss(y_pred, y_true, reduction='none')
-    # print("Losses")
-    # print(content_loss.shape)  # (4, 64, 64, 64, 3)
-    # print(adversarial_loss.shape)  # (4, 1, 1, 1) -> misshape
+    content_loss = F.mse_loss(y_pred, y_true, reduction='none').mean(dim=(1, 2, 3, 4))
+    total_loss = content_loss + 1e-3 * adversarial_loss
 
-    total_loss = content_loss #+ 1e-3 * adversarial_loss
-    scale_loss = total_loss.sum(dim=(1, 2, 3)) / (global_batch_size * nx * ny * nz)
-    return scale_loss.mean()
+    return total_loss.mean()
 
 def discriminator_loss(real_y, fake_y, global_batch_size):
     real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
