@@ -306,7 +306,9 @@ class GAN3D(ABC):
             mlflow.log_params({
                 "epochs": epochs,
                 "saving_freq": saving_freq,
-                "model_name": self.name
+                "model_name": self.name,
+                "batch_size": batch_size,
+                "dataset_size": sample_amount,
             })
             # print('mlflow enable')
             for epoch in range(1, epochs + 1):

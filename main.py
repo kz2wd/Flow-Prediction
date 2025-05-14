@@ -17,10 +17,10 @@ def test():
                                 prediction_sub_space=prediction_sub_space,
                                 channel_data_file=FolderManager.tfrecords / "scaling.npz")
 
-    model = GAN3D("torch_test", "ckpt-1", channel)
+    model = GAN3D("torch_test-A03", "ckpt-1", channel)
     # model.test(10)
     # model.benchmark()
-    model.train(1, 1, 4, 16)
+    model.train(30, 1, 16, 4000)
     # Plotter.plot_mse(model, "mse")
 
 def plot():
