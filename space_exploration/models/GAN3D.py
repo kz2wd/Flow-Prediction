@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import h5py
 import mlflow
 import numpy as np
+import tqdm
 import vtk
 from torch.utils.data import DataLoader, random_split
 from vtk.util import numpy_support
@@ -104,6 +105,7 @@ class Discriminator(nn.Module):
         nz = channel.prediction_sub_space.z[1]
 
         super().__init__()
+        # flatten_size = nx // 16 * ny // 16 * nz // 16 * 512
         self.model = nn.Sequential(
             nn.Conv3d(input_channels, 64, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2),
@@ -122,7 +124,7 @@ class Discriminator(nn.Module):
             nn.Conv3d(512, 512, kernel_size=3, stride=2, padding=1),
             nn.LeakyReLU(0.2),
             nn.Flatten(),
-            nn.Linear(nx // 16 * ny // 16 * nz // 16 * 512, 1024),
+            nn.Linear(4096, 1024),
             nn.LeakyReLU(0.2),
             nn.Linear(1024, 1),
             nn.Sigmoid()
@@ -140,8 +142,8 @@ def generator_loss(fake_y, y_pred, y_true, batch_size, global_batch_size, nx, ny
     # adversarial_loss = adversarial_loss.view(batch_size, 1, 1, 1)
 
     content_loss = F.mse_loss(y_pred, y_true, reduction='none')
-    print("Losses")
-    print(content_loss.shape)  # (4, 64, 64, 64, 3)
+    # print("Losses")
+    # print(content_loss.shape)  # (4, 64, 64, 64, 3)
     # print(adversarial_loss.shape)  # (4, 1, 1, 1) -> misshape
 
     total_loss = content_loss #+ 1e-3 * adversarial_loss
@@ -250,19 +252,19 @@ class GAN3D(ABC):
         self.discriminator_loss = lambda real_y, fake_y: discriminator_loss(real_y, fake_y, 1)
         print("established losses")
         self.generator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
-        self.discriminator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
+        self.discriminator_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.learning_rate)
         print("established optimizers")
 
         def train_step(x_target, y_target):
-            print("starting train step")
+            # print("starting train step")
             self.generator.train()
             self.discriminator.train()
 
-            print("generating output")
+            # print("generating output")
             y_pred = self.generator(x_target)
 
             real_output = self.discriminator(y_target)
-            fake_output = self.discriminator(y_pred)
+            fake_output = self.discriminator(y_pred.detach())
 
             gen_loss = self.generator_loss(fake_output, y_pred, y_target)
             disc_loss = self.discriminator_loss(real_output, fake_output)
@@ -271,9 +273,9 @@ class GAN3D(ABC):
             gen_loss.backward(retain_graph=True)
             self.generator_optimizer.step()
 
-            # self.discriminator_optimizer.zero_grad()
-            # disc_loss.backward()
-            # self.discriminator_optimizer.step()
+            self.discriminator_optimizer.zero_grad()
+            disc_loss.backward()
+            self.discriminator_optimizer.step()
 
             return gen_loss.item(), disc_loss.item()
 
@@ -311,7 +313,7 @@ class GAN3D(ABC):
                 "saving_freq": saving_freq,
                 "model_name": self.name
             })
-            print('mlflow enable')
+            # print('mlflow enable')
             for epoch in range(1, epochs + 1):
                 print("epoch {}".format(epoch))
                 train_gen_losses = []
@@ -319,15 +321,15 @@ class GAN3D(ABC):
                 valid_gen_losses = []
                 valid_disc_losses = []
 
-                for x_target, y_target in dataset_train:
-                    print("batching...")
+                for x_target, y_target in tqdm.tqdm(dataset_train):
+                    # print("batching...")
                     x_target, y_target = x_target.to(self.device), y_target.to(self.device)
-                    print("sent to device")
+                    # print("sent to device")
                     gen_loss, disc_loss = train_step(x_target, y_target)
                     train_gen_losses.append(gen_loss)
                     train_disc_losses.append(disc_loss)
 
-                for x_target, y_target in dataset_valid:
+                for x_target, y_target in tqdm.tqdm(dataset_valid):
                     x_target, y_target = x_target.to(self.device), y_target.to(self.device)
                     gen_loss, disc_loss = valid_step(x_target, y_target)
                     valid_gen_losses.append(gen_loss)
