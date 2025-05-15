@@ -11,13 +11,13 @@ from space_exploration.simulation_channel.SimulationChannel import SimulationCha
 
 def test():
 
-    prediction_sub_space = PredictionSubSpace(x_start=0, x_end=64, y_start=0, y_end=64, z_start=0,
+    prediction_sub_space = PredictionSubSpace(x_start=0, x_end=64, y_start=0, y_end=32, z_start=0,
                                               z_end=64)
     channel = SimulationChannel(x_length=np.pi, z_length=np.pi / 2, x_resolution=64, z_resolution=64,
                                 prediction_sub_space=prediction_sub_space,
                                 channel_data_file=FolderManager.tfrecords / "scaling.npz")
 
-    model = GAN3D("torch_test-A03", "ckpt-1", channel)
+    model = GAN3D("C04", "ckpt-1", channel)
     # model.test(10)
     # model.benchmark()
     model.train(30, 1, 16, 4000)

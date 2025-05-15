@@ -58,7 +58,7 @@ class Generator(nn.Module):
             nn.PReLU()
         )
 
-        self.up_sample_1 = UpSamplingBlock(64, 64)
+        # self.up_sample_1 = UpSamplingBlock(64, 64)
         res_block = []
         up_sampling = []
 
@@ -78,7 +78,7 @@ class Generator(nn.Module):
     def forward(self, x):
         x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
         x = self.initial(x)
-        x = self.up_sample_1(x)
+        # x = self.up_sample_1(x)
         up_samp = self.up_sampling(x)
         x = self.res_block(x)
         x = x + up_samp
@@ -103,9 +103,10 @@ class Discriminator(nn.Module):
         nx = channel.prediction_sub_space.x[1]
         ny = channel.prediction_sub_space.y[1]
         nz = channel.prediction_sub_space.z[1]
-
         super().__init__()
-        # flatten_size = nx // 16 * ny // 16 * nz // 16 * 512
+        total_stride = 4 * 2 * 2 * 2
+        flatten_size = nx // total_stride * ny // total_stride * nz // total_stride * 512  # each channel gets divided by
+        # the total stride, times 512 because we have 512 filters at the end
         self.model = nn.Sequential(
             nn.Conv3d(input_channels, 64, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2),
@@ -124,7 +125,7 @@ class Discriminator(nn.Module):
             nn.Conv3d(512, 512, kernel_size=3, stride=2, padding=1),
             nn.LeakyReLU(0.2),
             nn.Flatten(),
-            nn.Linear(4096, 1024),
+            nn.Linear(flatten_size, 1024),
             nn.LeakyReLU(0.2),
             nn.Linear(1024, 1),
             nn.Sigmoid()
@@ -177,7 +178,7 @@ class GAN3D(ABC):
         self.discriminator = Discriminator(input_channels, channel).to(self.device)
 
     def make_dataset(self, target_file, sample_amount):
-        return HDF5Dataset(target_file, sample_amount)
+        return HDF5Dataset(target_file, self.channel, sample_amount)
 
     def get_dataloader(self, target_file, batch_size, shuffle=True):
         dataset = self.make_dataset(target_file)
