@@ -25,7 +25,7 @@ def test():
 
 def plot():
     model = C04()
-    Plotter.plot_contours(model, "")
+    # Plotter.plot_contours(model, "")
 
 if __name__ == '__main__':
     test()

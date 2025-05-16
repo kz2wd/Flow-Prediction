@@ -11,6 +11,7 @@ class FolderManager:
     FOLDER_PREFIX = ""
     if FOLDER_PREFIX_FILE.is_file():
         FOLDER_PREFIX = Path(FOLDER_PREFIX_FILE).read_text().strip("\n")
+    mlflow_tracking_uri = Path("mlruns")
     channel_coordinates = Path(FOLDER_PREFIX) / "channel_coordinates"
     _checkpoints = Path(FOLDER_PREFIX) / "checkpoints"
     _generated_data = Path(FOLDER_PREFIX) / "generated_data"
