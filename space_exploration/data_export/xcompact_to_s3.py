@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
-
+import tqdm
 
 def get_shape_from_xdmf(folder, snapshot_index):
     snapshot_path = folder / f"snapshot-{snapshot_index}.xdmf"
@@ -48,20 +48,26 @@ def get_ids(folder: Path):
     return sorted(list(matching_ids))
 
 
-def load_all_snapshots(dims, folder: Path, dtype=np.float64):
+def load_all_snapshots(folder: Path, dtype=np.float64):
     data = []
     indices = get_ids(folder)
-    for idx in indices:
+    dims = None
+
+    for idx in tqdm.tqdm(indices):
+
+        if dims is None:
+            # dims_F for Fortran format (z, y, x)
+            dims = get_shape_from_xdmf(folder, idx)
+
         snapshot = load_velocity_snapshot(idx, dims, folder, dtype)
         data.append(snapshot)
     return np.stack(data, axis=0)  # Shape: [N, 3, nx, ny, nz]
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', type=dir_path)
     args = parser.parse_args(namespace=parser)
     main_folder = Path(args.path)
-    snapshot_index = 1
-    # dims_F for Fortran format (z, y, x)
-    dims_F = get_shape_from_xdmf(main_folder, snapshot_index)
-    load_all_snapshots(dims_F, main_folder, dtype=np.float64)
+    dataset = load_all_snapshots(main_folder, dtype=np.float64)
+    print(dataset.shape)
