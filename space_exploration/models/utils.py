@@ -1,38 +1,43 @@
-# import numpy as np
-# import tensorflow as tf
-# import tensorflow.keras as keras
-# import tensorflow.keras.layers as layers
-#
-#
-# def res_block_gen(model, kernal_size, filters, strides):
-#     gen = model
-#     model = layers.Conv3D(filters=filters, kernel_size=kernal_size, strides=strides, padding="same",
-#                           data_format='channels_last')(model)
-#     model = layers.PReLU(alpha_initializer='zeros', alpha_regularizer=None, alpha_constraint=None,
-#                          shared_axes=[1, 2, 3])(model)
-#     model = layers.Conv3D(filters=filters, kernel_size=kernal_size, strides=strides, padding="same",
-#                           data_format='channels_last')(model)
-#     model = layers.Add()([gen, model])
-#
-#     return model
-#
-#
-# def up_sampling_block(model, kernel_size, filters, strides):
-#     model = layers.UpSampling3D(size=(1, 2, 1), data_format='channels_last')(model)
-#     model = layers.Conv3D(filters=filters, kernel_size=kernel_size, strides=strides, padding="same",
-#                           data_format='channels_last')(model)
-#     model = layers.PReLU(alpha_initializer='zeros', alpha_regularizer=None, alpha_constraint=None,
-#                          shared_axes=[1, 2, 3])(model)
-#
-#     return model
-#
-#
-# def discriminator_block(model, filters, kernel_size, strides):
-#     model = layers.Conv3D(filters=filters, kernel_size=kernel_size, strides=strides, padding="same",
-#                           data_format='channels_last')(model)
-#
-#     # Apply Leaky ReLU activation function
-#
-#     model = layers.LeakyReLU(alpha=0.2)(model)
-#
-#     return model
+from torch import nn
+
+
+class ResBlockGen(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv3d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.prelu = nn.PReLU()
+        self.conv2 = nn.Conv3d(channels, channels, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        identity = x
+        out = self.conv1(x)
+        out = self.prelu(out)
+        out = self.conv2(out)
+        out = out + identity
+        return out
+
+class UpSamplingBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.upsample = nn.Upsample(scale_factor=(1, 2, 1), mode='nearest')
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.prelu = nn.PReLU()
+
+    def forward(self, x):
+        x = self.upsample(x)
+        x = self.conv(x)
+        x = self.prelu(x)
+        return x
+
+
+class DiscriminatorBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride):
+        super().__init__()
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.relu = nn.LeakyReLU(0.2)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.relu(x)
+        return x
+

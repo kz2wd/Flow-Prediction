@@ -10,9 +10,7 @@ from torch.utils.data import DataLoader, random_split
 from vtk.util import numpy_support
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 
 from FolderManager import FolderManager
 from space_exploration.data_viz.PlotData import PlotData, save_benchmarks
@@ -20,124 +18,9 @@ from space_exploration.models.dataset import HDF5Dataset
 from space_exploration.simulation_channel import SimulationChannel
 from visualization.saving_file_names import *
 
-class ResBlockGen(nn.Module):
-    def __init__(self, channels):
-        super().__init__()
-        self.conv1 = nn.Conv3d(channels, channels, kernel_size=3, stride=1, padding=1)
-        self.prelu = nn.PReLU()
-        self.conv2 = nn.Conv3d(channels, channels, kernel_size=3, stride=1, padding=1)
-
-    def forward(self, x):
-        identity = x
-        out = self.conv1(x)
-        out = self.prelu(out)
-        out = self.conv2(out)
-        out = out + identity
-        return out
-
-class UpSamplingBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-        self.upsample = nn.Upsample(scale_factor=(1, 2, 1), mode='nearest')
-        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.prelu = nn.PReLU()
-
-    def forward(self, x):
-        x = self.upsample(x)
-        x = self.conv(x)
-        x = self.prelu(x)
-        return x
-
-class Generator(nn.Module):
-    def __init__(self, channel: SimulationChannel, input_channels=3, n_residual_blocks=32, output_channels=3):
-        super().__init__()
-        self.ny = channel.prediction_sub_space.y[1]
-
-        self.initial = nn.Sequential(
-            nn.Conv3d(input_channels, 64, kernel_size=9, stride=1, padding=4),
-            nn.PReLU()
-        )
-
-        # self.up_sample_1 = UpSamplingBlock(64, 64)
-        res_block = []
-        up_sampling = []
-
-        for index in range(n_residual_blocks):
-            res_block.append(ResBlockGen(64))
-            if index in [6, 12, 18, 24, 30]:
-                res_block.append(UpSamplingBlock(64, 64))
-                up_sampling.append(nn.Upsample(scale_factor=(1, 2, 1), mode='nearest'))
-
-        self.res_block = nn.Sequential(*res_block)
-        self.up_sampling = nn.Sequential(*up_sampling)
-
-        self.conv2 = nn.Conv3d(64, 256, kernel_size=3, stride=1, padding=1)
-
-        self.output_conv = nn.Conv3d(256, output_channels, kernel_size=9, stride=1, padding=4)
-
-    def forward(self, x):
-        x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
-        x = self.initial(x)
-        # x = self.up_sample_1(x)
-        up_samp = self.up_sampling(x)
-        x = self.res_block(x)
-        x = x + up_samp
-        x = self.conv2(x)
-        x = self.output_conv(x)
-        x = x.permute(0, 2, 3, 4, 1)  # put it back ...
-        return x
-
-class DiscriminatorBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride):
-        super().__init__()
-        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
-        self.relu = nn.LeakyReLU(0.2)
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.relu(x)
-        return x
-
-class Discriminator(nn.Module):
-    def __init__(self, input_channels, channel: SimulationChannel):
-        nx = channel.prediction_sub_space.x[1]
-        ny = channel.prediction_sub_space.y[1]
-        nz = channel.prediction_sub_space.z[1]
-        super().__init__()
-        total_stride = 4 * 2 * 2 * 2
-        flatten_size = nx // total_stride * ny // total_stride * nz // total_stride * 512  # each channel gets divided by
-        # the total stride, times 512 because we have 512 filters at the end
-        self.model = nn.Sequential(
-            nn.Conv3d(input_channels, 64, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv3d(64, 64, kernel_size=3, stride=4, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv3d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv3d(128, 128, kernel_size=3, stride=2, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv3d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv3d(256, 256, kernel_size=3, stride=2, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv3d(256, 512, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Conv3d(512, 512, kernel_size=3, stride=2, padding=1),
-            nn.LeakyReLU(0.2),
-            nn.Flatten(),
-            nn.Linear(flatten_size, 1024),
-            nn.LeakyReLU(0.2),
-            nn.Linear(1024, 1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
-        x = self.model(x)
-        return x
 
 # Loss functions
-def generator_loss(fake_y, y_pred, y_true, batch_size, global_batch_size, nx, ny, nz):
+def generator_loss(fake_y, y_pred, y_true):
     adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
     adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
 
@@ -146,7 +29,7 @@ def generator_loss(fake_y, y_pred, y_true, batch_size, global_batch_size, nx, ny
 
     return total_loss.mean()
 
-def discriminator_loss(real_y, fake_y, global_batch_size):
+def discriminator_loss(real_y, fake_y):
     real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
     fake_labels = torch.rand_like(fake_y) * 0.2
 
@@ -154,7 +37,7 @@ def discriminator_loss(real_y, fake_y, global_batch_size):
     fake_loss = F.binary_cross_entropy(fake_y, fake_labels, reduction='none')
 
     total_loss = 0.5 * (real_loss + fake_loss)
-    return total_loss.mean() / global_batch_size
+    return total_loss.mean()
 
 class GAN3D(ABC):
     def __init__(self, name, checkpoint_number, channel: SimulationChannel,
@@ -174,8 +57,20 @@ class GAN3D(ABC):
 
         self.device = torch.device("cuda")  # if we cannot get cuda, don't even try...
 
-        self.generator = Generator(channel).to(self.device)
-        self.discriminator = Discriminator(input_channels, channel).to(self.device)
+        self.generator = self.get_generator(channel).to(self.device)
+        self.discriminator = self.get_discriminator(channel).to(self.device)
+        self.generator_loss = generator_loss
+        self.discriminator_loss = discriminator_loss
+
+
+    @abstractmethod
+    def get_generator(self, channel: SimulationChannel):
+        pass
+
+    @abstractmethod
+    def get_discriminator(self, channel: SimulationChannel):
+        pass
+
 
     def make_dataset(self, target_file, sample_amount):
         return HDF5Dataset(target_file, self.channel, sample_amount)
@@ -240,12 +135,12 @@ class GAN3D(ABC):
 
     def train(self, epochs, saving_freq, batch_size, sample_amount=-1):
         # Dataloaders
+        mlflow.set_tracking_uri("http://localhost:5000")
+
         print("starting train")
         dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test.hdf5", batch_size, sample_amount)
         print("established dataset")
         nx, ny, nz = self.channel.prediction_sub_space.x_size, self.channel.prediction_sub_space.y_size, self.channel.prediction_sub_space.z_size
-        self.generator_loss = lambda real_y, fake_y, y_true: generator_loss(real_y, fake_y, y_true, batch_size, 1, nx, ny, nz)
-        self.discriminator_loss = lambda real_y, fake_y: discriminator_loss(real_y, fake_y, 1)
         print("established losses")
         self.generator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
         self.discriminator_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.learning_rate)
@@ -320,9 +215,7 @@ class GAN3D(ABC):
                 valid_disc_losses = []
 
                 for x_target, y_target in tqdm.tqdm(dataset_train):
-                    # print("batching...")
                     x_target, y_target = x_target.to(self.device), y_target.to(self.device)
-                    # print("sent to device")
                     gen_loss, disc_loss = train_step(x_target, y_target)
                     train_gen_losses.append(gen_loss)
                     train_disc_losses.append(disc_loss)
