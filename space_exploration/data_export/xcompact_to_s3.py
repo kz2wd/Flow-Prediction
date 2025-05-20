@@ -9,9 +9,8 @@ import tqdm
 import dask.array as da
 from dask import delayed
 from dask.diagnostics import ProgressBar
-import s3fs
 
-from space_exploration.data_export import s3_access
+import s3_access
 
 
 def get_shape_from_xdmf(folder, snapshot_index):
