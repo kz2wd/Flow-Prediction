@@ -7,10 +7,12 @@ import argparse
 import numpy as np
 import tqdm
 import dask.array as da
-import zarr
 from dask import delayed
 from dask.diagnostics import ProgressBar
 import s3fs
+
+from space_exploration.data_export import s3_access
+
 
 def get_shape_from_xdmf(folder, snapshot_index):
     snapshot_path = folder / f"snapshot-{snapshot_index}.xdmf"
@@ -61,17 +63,7 @@ def load_all_snapshots_zarr(folder: Path, zarr_store_path: str, s3=False):
 
     dset = da.stack(delayed_arrays, axis=0)  # Shape: [N, 3, nx, ny, nz]
 
-
-    # Set it in ~/.aws/credentials:
-    """
-    [default]
-    aws_access_key_id = your-access-key
-    aws_secret_access_key = your-secret-key
-    """
-    fs = s3fs.S3FileSystem(profile='default', client_kwargs={
-    'endpoint_url': 'http://localhost:9000'  # Minio url here
-    })
-    store = zarr_store_path if not s3 else s3fs.S3Map(root=zarr_store_path, s3=fs, check=False)
+    store = zarr_store_path if not s3 else s3_access.get_s3_map(zarr_store_path)
     dset.to_zarr(store, overwrite=True)
     return dset
 
