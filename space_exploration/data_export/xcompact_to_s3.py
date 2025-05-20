@@ -1,9 +1,16 @@
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
+import os
+import argparse
 
 import numpy as np
 import tqdm
+import dask.array as da
+import zarr
+from dask import delayed
+from dask.diagnostics import ProgressBar
+import s3fs
 
 def get_shape_from_xdmf(folder, snapshot_index):
     snapshot_path = folder / f"snapshot-{snapshot_index}.xdmf"
@@ -15,27 +22,21 @@ def get_shape_from_xdmf(folder, snapshot_index):
             return dims  # (nz, ny, nx)
     raise ValueError("Could not find grid dimensions in XDMF.")
 
-import argparse, os
-
 def dir_path(string):
     if os.path.isdir(string):
         return string
     else:
         raise NotADirectoryError(string)
 
-
 def load_velocity_snapshot(snapshot_index, dims, folder, dtype=np.float64):
     nx, ny, nz = dims[::-1]  # because dims = (nz, ny, nx)
     shape = (nx, ny, nz)
-
     components = []
     for comp in ['ux', 'uy', 'uz']:
         filename = folder / f"{comp}-{snapshot_index}.bin"
         data = np.fromfile(filename, dtype=dtype).reshape(shape, order='F')
         components.append(data)
-
     return np.stack(components, axis=0)  # Shape: [3, nx, ny, nz]
-
 
 def get_ids(folder: Path):
     matching_ids = set()
@@ -47,27 +48,45 @@ def get_ids(folder: Path):
             matching_ids.add(file_id)
     return sorted(list(matching_ids))
 
-
-def load_all_snapshots(folder: Path, dtype=np.float64):
-    data = []
+def load_all_snapshots_zarr(folder: Path, zarr_store_path: str, s3=False):
     indices = get_ids(folder)
-    dims = None
+    dims = get_shape_from_xdmf(folder, indices[0])
+    nx, ny, nz = dims[::-1]
 
+    delayed_arrays = []
     for idx in tqdm.tqdm(indices):
+        arr = delayed(load_velocity_snapshot)(idx, dims, folder)
+        darr = da.from_delayed(arr, shape=(3, nx, ny, nz), dtype=np.float64)
+        delayed_arrays.append(darr)
 
-        if dims is None:
-            # dims_F for Fortran format (z, y, x)
-            dims = get_shape_from_xdmf(folder, idx)
+    dset = da.stack(delayed_arrays, axis=0)  # Shape: [N, 3, nx, ny, nz]
 
-        snapshot = load_velocity_snapshot(idx, dims, folder, dtype)
-        data.append(snapshot)
-    return np.stack(data, axis=0)  # Shape: [N, 3, nx, ny, nz]
 
+    # Set it in ~/.aws/credentials:
+    """
+    [default]
+    aws_access_key_id = your-access-key
+    aws_secret_access_key = your-secret-key
+    """
+    fs = s3fs.S3FileSystem(profile='default', client_kwargs={
+    'endpoint_url': 'http://localhost:9000'  # Minio url here
+    })
+    store = zarr_store_path if not s3 else s3fs.S3Map(root=zarr_store_path, s3=fs, check=False)
+    dset.to_zarr(store, overwrite=True)
+    return dset
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', type=dir_path)
-    args = parser.parse_args(namespace=parser)
+    parser.add_argument('--path', type=dir_path, required=True)
+    parser.add_argument('--zarr_store', type=str, required=True, help='Local path or s3://bucket/key')
+    parser.add_argument('--use_s3', action='store_true')
+    args = parser.parse_args()
+
     main_folder = Path(args.path)
-    dataset = load_all_snapshots(main_folder, dtype=np.float64)
-    print(dataset.shape)
+
+    with ProgressBar():
+        dset = load_all_snapshots_zarr(main_folder, args.zarr_store, s3=args.use_s3)
+
+    print("Saved dataset to Zarr:", args.zarr_store)
+    print("Shape:", dset.shape)
+    print("Mean:", dset.mean().compute())  # print mean as a way to show user that it is not filled with NaN.
