@@ -6,7 +6,7 @@ from space_exploration.simulation_channel.PredictionSubSpace import PredictionSu
 
 
 class ChannelData:
-    def __init__(self, source_file, space: PredictionSubSpace):
+    def __init__(self, source_file):
         # Load mean velocity values in the streamwise and wall-normal directions for low- and high-resolution data
         with np.load(source_file) as f:
             self.U_mean = np.expand_dims(f['U_mean'], axis=-1)[:, :64, :, :]

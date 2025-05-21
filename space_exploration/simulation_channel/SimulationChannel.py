@@ -17,4 +17,4 @@ class SimulationChannel:
         self.z_dimension = np.arange(z_resolution) * z_length / z_resolution
         self.prediction_sub_space: PredictionSubSpace = prediction_sub_space
 
-        self.data = ChannelData(channel_data_file, self.prediction_sub_space)
+        self.data = ChannelData(channel_data_file)

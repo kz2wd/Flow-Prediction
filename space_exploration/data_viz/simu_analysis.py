@@ -8,9 +8,15 @@ import s3_access
 
 def plot_y_velo(ds, plot_name):
 
-    velocity_mean = ds.norm(axis=4).mean(axis=(0, 1, 3)).compute()
+    if ds.shape[-1] == 3:
+        ds = da.linalg.norm(ds, axis=4)
+        velocity_mean = ds.mean(axis=(0, 1, 3)).compute()
+    else:
+        ds = da.linalg.norm(ds, axis=1)
+        print(ds.shape)
+        velocity_mean = ds.mean(axis=(0, 1, 3)).compute()
 
-    plt.semilogx(velocity_mean[..., 0])
+    plt.semilogx(velocity_mean, label="mean velocity")
     plt.title("velocity mean along wall-normal")
     plt.legend()
     plt.grid(True)
@@ -30,7 +36,7 @@ if __name__ == "__main__":
     ds = da.from_zarr(z)
     print(ds)
 
-    plot_y_velo(ds, "u_velo.png")
+    plot_y_velo(ds, "paper_y_velo.png")
 
 
 
