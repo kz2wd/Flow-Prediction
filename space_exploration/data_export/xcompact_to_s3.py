@@ -29,7 +29,7 @@ def dir_path(string):
     else:
         raise NotADirectoryError(string)
 
-def load_velocity_snapshot(snapshot_index, dims, folder, dtype=np.float64):
+def load_velocity_snapshot(snapshot_index, dims, folder, dtype=np.float32):
     nx, ny, nz = dims[::-1]  # because dims = (nz, ny, nx)
     shape = (nx, ny, nz)
     components = []
