@@ -4,7 +4,7 @@ from abc import ABC
 import numpy as np
 from torch import nn
 
-from FolderManager import FolderManager
+from space_exploration.FolderManager import FolderManager
 from space_exploration.models.GAN3D import GAN3D
 from space_exploration.simulation_channel.PredictionSubSpace import PredictionSubSpace
 from space_exploration.simulation_channel.SimulationChannel import SimulationChannel

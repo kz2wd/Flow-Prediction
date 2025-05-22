@@ -12,7 +12,7 @@ from vtk.util import numpy_support
 import torch
 import torch.nn.functional as F
 
-from FolderManager import FolderManager
+from space_exploration.FolderManager import FolderManager
 from space_exploration.data_viz.PlotData import PlotData, save_benchmarks
 from space_exploration.models.dataset import HDF5Dataset
 from space_exploration.simulation_channel import SimulationChannel

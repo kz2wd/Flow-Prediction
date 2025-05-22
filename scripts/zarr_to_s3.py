@@ -1,12 +1,8 @@
-
-import os
 from pathlib import Path
 
 import argparse
 
-import h5py
-
-import s3_access
+from space_exploration.dataset import s3_access
 
 import dask.array as da
 from dask.diagnostics import ProgressBar

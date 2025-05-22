@@ -4,7 +4,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
-from FolderManager import FolderManager
+from space_exploration.FolderManager import FolderManager
 from space_exploration.data_viz.PlotData import get_benchmarks, PlotData
 
 

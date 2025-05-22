@@ -1,8 +1,7 @@
 import dask.array as da
 import zarr
 from matplotlib import pyplot as plt
-
-import s3_access
+from space_exploration.dataset import s3_access
 
 
 
@@ -32,8 +31,7 @@ if __name__ == "__main__":
 
     file_path = f"s3://{target_bucket}/{target_dataset}"
     store = s3_access.get_s3_map(file_path)
-    z = zarr.open_array(store, mode='r')
-    ds = da.from_zarr(z)
+    ds = da.from_zarr(store)
     print(ds)
 
     plot_y_velo(ds, "paper_y_velo.png")

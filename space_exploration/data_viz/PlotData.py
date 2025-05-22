@@ -2,7 +2,7 @@ from strenum import StrEnum
 
 import h5py
 
-from FolderManager import FolderManager
+from space_exploration.FolderManager import FolderManager
 
 
 class PlotData(StrEnum):

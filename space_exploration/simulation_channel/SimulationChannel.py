@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 
-from FolderManager import FolderManager
+from space_exploration.FolderManager import FolderManager
 from space_exploration.simulation_channel.ChannelData import ChannelData
 from space_exploration.simulation_channel.PredictionSubSpace import PredictionSubSpace
 

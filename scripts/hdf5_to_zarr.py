@@ -1,10 +1,9 @@
 import argparse
 from pathlib import Path
-import h5py
-import zarr
+
 import dask.array as da
+import h5py
 from dask.diagnostics import ProgressBar
-from mpmath.functions.hypergeometric import hyp3f2
 
 
 def hdf5_path(string):
