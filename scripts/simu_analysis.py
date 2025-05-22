@@ -7,21 +7,15 @@ from space_exploration.dataset import s3_access
 
 def plot_y_velo(ds, plot_name):
 
-    if ds.shape[-1] == 3:
-        ds = da.linalg.norm(ds, axis=4)
-        velocity_mean = ds.mean(axis=(0, 1, 3)).compute()
-    else:
-        ds = da.linalg.norm(ds, axis=1)
-        print(ds.shape)
-        velocity_mean = ds.mean(axis=(0, 1, 3)).compute()
+
+    velocity_mean = ds[:, 0].mean(axis=(0, 1, 3)).compute()
+
 
     plt.semilogx(velocity_mean, label="mean velocity")
-    plt.title("velocity mean along wall-normal")
+    plt.title("mean stream wise velocity along wall-normal")
     plt.legend()
     plt.grid(True)
     plt.savefig(plot_name)
-
-
 
 
 if __name__ == "__main__":

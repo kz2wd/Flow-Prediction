@@ -1,19 +1,17 @@
 import torch
 from torch.utils.data import Dataset
-import h5py
+
 
 from space_exploration.simulation_channel.SimulationChannel import SimulationChannel
 
 
-class HDF5Dataset(Dataset):
+class S3Dataset(Dataset):
     def __init__(self, ds, channel: SimulationChannel):
 
         self.ds = ds
 
-        self.x = self.file['x'][:amount, ...]  # [X, x, 1, z, 3]
-        self.y = self.file['y'][:amount, :, :channel.prediction_sub_space.y[1], :, :]  # [X, x, y, z, 3]
-
-
+        self.x = self.ds[..., :, :, 1, :]  # [B, 3, x, 1, z]
+        self.y = self.ds[..., :, :, channel.prediction_sub_space.y[1], :]  # [B, 3, x, y, z]
 
     def __len__(self):
         return len(self.x)

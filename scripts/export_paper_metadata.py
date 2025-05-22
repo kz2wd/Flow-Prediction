@@ -10,18 +10,18 @@ from pathlib import Path
 from sqlalchemy import create_engine
 
 
-def add_dataset(session, name, s3_storage_name, raw_data_normalized, y_dimensions, u_means,
+def add_dataset(session, name, s3_storage_name, scaling, y_dimensions, u_means,
                 v_means, w_means, u_stds, v_stds, w_stds):
     dataset = Dataset(
         name=name,
         s3_storage_name=s3_storage_name,
-        raw_data_normalized=raw_data_normalized,
+        scaling=scaling,
     )
 
-    for i in range(len(y_dimensions) - 1):
+    for i in range(64):
         stat = DatasetStat(
             y_index=i,
-            y_coord=float(y_dimension[i]),
+            y_coord=float(y_dimensions[i]),
             u_mean=float(u_means[i]),
             v_mean=float(v_means[i]),
             w_mean=float(w_means[i]),
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     channel_data_file: Path = FolderManager.tfrecords / "scaling.npz"
     channel_data = ChannelData(channel_data_file)
-    y_dimension = np.load(FolderManager.channel_coordinates / "coordY.npy")
+    y_dimensions = np.load(FolderManager.channel_coordinates / "coordY.npy")
 
     u_means = channel_data.U_mean.reshape(-1)
     v_means = channel_data.V_mean.reshape(-1)
@@ -60,8 +60,8 @@ if __name__ == "__main__":
         session=session,
         name="paper-validation",
         s3_storage_name="paper-dataset.zarr",
-        raw_data_normalized=True,
-        y_dimensions=y_dimension,
+        scaling=100 / 3,
+        y_dimensions=y_dimensions,
         u_means=u_means,
         v_means=v_means,
         w_means=w_means,

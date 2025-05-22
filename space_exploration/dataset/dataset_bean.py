@@ -1,4 +1,4 @@
-from dask.array import da
+import dask.array as da
 from sqlalchemy import create_engine, Column, String, Float, DateTime, Boolean, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -15,8 +15,10 @@ class Dataset(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     s3_storage_name = Column(String, unique=True)
-    raw_data_normalized = Column(Boolean)
+    scaling = Column(Float)
     stats = relationship("DatasetStat", back_populates="dataset", cascade="all, delete-orphan")
+
+
 
     def load_s3(self):
         s3_map = s3_access.get_s3_map(f"s3://simulations/{self.s3_storage_name}")
