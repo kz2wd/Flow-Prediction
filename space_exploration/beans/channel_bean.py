@@ -9,7 +9,6 @@ class Channel(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     x_resolution = Column(Integer)
-    y_resolution = Column(Integer)
     z_resolution = Column(Integer)
     x_length = Column(Float)
     z_length = Column(Float)
