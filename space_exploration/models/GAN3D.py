@@ -41,7 +41,7 @@ def discriminator_loss(real_y, fake_y):
 
 class GAN3D(ABC):
     def __init__(self, name, checkpoint_number, channel: SimulationChannel,
-                 n_residual_blocks=32, input_channels=3, output_channels=3, learning_rate=1e-4, ):
+                 n_residual_blocks=32, input_channels=3, output_channels=3, learning_rate=1e-4,):
         self.checkpoint_number = checkpoint_number
 
         self.channel: SimulationChannel = channel
@@ -92,8 +92,8 @@ class GAN3D(ABC):
             generator=torch.Generator().manual_seed(seed)
         )
 
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=16)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=8)
         test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
         return train_loader, val_loader, test_loader
@@ -137,21 +137,15 @@ class GAN3D(ABC):
         # Dataloaders
         mlflow.set_tracking_uri("http://localhost:5000")
 
-        print("starting train")
         dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test.hdf5", batch_size, sample_amount)
-        print("established dataset")
         nx, ny, nz = self.channel.prediction_sub_space.x_size, self.channel.prediction_sub_space.y_size, self.channel.prediction_sub_space.z_size
-        print("established losses")
         self.generator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
         self.discriminator_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.learning_rate)
-        print("established optimizers")
 
         def train_step(x_target, y_target):
-            # print("starting train step")
             self.generator.train()
             self.discriminator.train()
 
-            # print("generating output")
             y_pred = self.generator(x_target)
 
             real_output = self.discriminator(y_target)
@@ -196,7 +190,6 @@ class GAN3D(ABC):
 
         start_time = time.time()
         torch.autograd.set_detect_anomaly(True)
-        print('real start')
         with mlflow.start_run(run_name=self.name):
             mlflow.set_tag("model_type", "GAN")
             mlflow.log_params({
@@ -206,7 +199,6 @@ class GAN3D(ABC):
                 "batch_size": batch_size,
                 "dataset_size": sample_amount,
             })
-            # print('mlflow enable')
             for epoch in range(1, epochs + 1):
                 print("epoch {}".format(epoch))
                 train_gen_losses = []

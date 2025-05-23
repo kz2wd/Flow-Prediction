@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 
 from space_exploration.dataset import db_access
 from space_exploration.FolderManager import FolderManager
-from space_exploration.dataset.dataset_bean import Dataset, DatasetStat, Base
+from space_exploration.beans.dataset_bean import Dataset, DatasetStat, Base
 from space_exploration.simulation_channel.ChannelData import ChannelData
 
 from pathlib import Path

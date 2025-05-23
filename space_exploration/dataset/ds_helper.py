@@ -1,5 +1,5 @@
 
-def unnormalize(ds, u_means, v_means, w_means, u_stds, v_stds, w_stds):
+def y_along_component_denormalize(ds, u_means, v_means, w_means, u_stds, v_stds, w_stds):
     components = [0, 1, 2]  # channel indices: u, v, w
     stds = [u_stds, v_stds, w_stds]
     means = [u_means, v_means, w_means]
@@ -11,7 +11,7 @@ def unnormalize(ds, u_means, v_means, w_means, u_stds, v_stds, w_stds):
     return ds
 
 
-def normalize(ds, u_means, v_means, w_means, u_stds, v_stds, w_stds):
+def y_along_component_normalize(ds, u_means, v_means, w_means, u_stds, v_stds, w_stds):
     components = [0, 1, 2]  # channel indices: u, v, w
     stds = [u_stds, v_stds, w_stds]
     means = [u_means, v_means, w_means]
@@ -21,4 +21,6 @@ def normalize(ds, u_means, v_means, w_means, u_stds, v_stds, w_stds):
         ds[:, c, :, :, :] = (ds[:, c, :, :, :] - mean) / std
 
     return ds
+
+
 

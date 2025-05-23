@@ -1,14 +1,14 @@
 import torch
 from torch.utils.data import Dataset
 
-
+from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
 from space_exploration.simulation_channel.SimulationChannel import SimulationChannel
 
 
 class S3Dataset(Dataset):
-    def __init__(self, ds, channel: SimulationChannel):
+    def __init__(self, ds, channel: SimulationChannel, normalizer: NormalizerBase):
 
-        self.ds = ds
+        self.ds = normalizer.normalize(ds)
 
         self.x = self.ds[..., :, :, 1, :]  # [B, 3, x, 1, z]
         self.y = self.ds[..., :, :, channel.prediction_sub_space.y[1], :]  # [B, 3, x, y, z]
