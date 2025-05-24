@@ -49,7 +49,7 @@ class Dataset(Base):
         return s3
 
     def get_dataset_analyzer(self):
-        return DatasetAnalyzer(self.load_s3(), self.channel.get_simulation_channel())
+        return DatasetAnalyzer(self.load_s3(), self.scaling, self.channel.get_simulation_channel())
 
 
 

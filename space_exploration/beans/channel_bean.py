@@ -14,11 +14,13 @@ class Channel(Base):
     z_resolution = Column(Integer)
     x_length = Column(Float)
     z_length = Column(Float)
+    y_scale_to_y_plus = Column(Float)
     y_dimension = relationship("ChannelY", back_populates="channel", cascade="all, delete-orphan")
 
     def get_simulation_channel(self):
         y_dimension = np.array([channel_y.y_coord for channel_y in self.y_dimension])
-        channel = SimulationChannel(self.x_length, self.x_resolution, self.z_length, self.z_resolution, y_dimension)
+        channel = SimulationChannel(self.x_length, self.x_resolution, self.z_length, self.z_resolution, y_dimension,
+                                    self.y_scale_to_y_plus)
         return channel
 
     @staticmethod
