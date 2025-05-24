@@ -2,17 +2,13 @@ from pathlib import Path
 
 import argparse
 
+from scripts.parser_utils import zarr_path
 from space_exploration.dataset import s3_access
 
 import dask.array as da
 from dask.diagnostics import ProgressBar
 
 
-def zarr_path(string):
-    path = Path(string)
-    if path.is_dir() and (path / ".zarray").exists() or any(path.glob("*.zgroup")):
-        return path
-    raise argparse.ArgumentTypeError(f"{string} is not a valid Zarr directory")
 
 def upload_zarr_to_s3(zarr: Path, remote_destination: str,):
     print("Loading zarr file...")

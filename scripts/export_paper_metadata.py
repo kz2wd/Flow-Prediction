@@ -1,41 +1,14 @@
-import numpy as np
-
-from space_exploration.beans.channel_bean import Channel
-from space_exploration.beans.dataset_stat_bean import DatasetStat
-from space_exploration.dataset import db_access
-from space_exploration.FolderManager import FolderManager
-from space_exploration.beans.dataset_bean import Dataset
-
 from pathlib import Path
 
+import numpy as np
 
-def add_dataset(session, name, s3_storage_name, channel, scaling, u_means,
-                v_means, w_means, u_stds, v_stds, w_stds):
-    dataset = Dataset(
-        name=name,
-        s3_storage_name=s3_storage_name,
-        scaling=scaling,
-        channel=channel,
-    )
-
-    for i in range(64):
-        stat = DatasetStat(
-            y_index=i,
-            u_mean=float(u_means[i]),
-            v_mean=float(v_means[i]),
-            w_mean=float(w_means[i]),
-            u_std=float(u_stds[i]),
-            v_std=float(v_stds[i]),
-            w_std=float(w_stds[i]),
-        )
-        dataset.stats.append(stat)
-
-
-    session.add(dataset)
-
+from scripts.database_add import add_dataset
+from space_exploration.FolderManager import FolderManager
+from space_exploration.beans.channel_bean import Channel
+from space_exploration.dataset import db_access
+from space_exploration.dataset.dataset_stat import DatasetStats
 
 if __name__ == "__main__":
-
 
     session = db_access.get_session()
 
@@ -48,12 +21,14 @@ if __name__ == "__main__":
         V_std = np.expand_dims(f['V_std'], axis=-1)[:, :64, :, :]
         W_std = np.expand_dims(f['W_std'], axis=-1)[:, :64, :, :]
 
-    u_means = U_mean.reshape(-1)
-    v_means = V_mean.reshape(-1)
-    w_means = W_mean.reshape(-1)
-    u_stds = U_std.reshape(-1)
-    v_stds = V_std.reshape(-1)
-    w_stds = W_std.reshape(-1)
+    stats = DatasetStats(
+        U_mean.reshape(-1),
+        V_mean.reshape(-1),
+        W_mean.reshape(-1),
+        U_std.reshape(-1),
+        V_std.reshape(-1),
+        W_std.reshape(-1),
+    )
 
     channel = Channel.get_channel(session, "paper-channel")
     if channel is None:
@@ -66,13 +41,7 @@ if __name__ == "__main__":
         s3_storage_name="paper-dataset.zarr",
         scaling=100 / 3,
         channel=channel,
-        u_means=u_means,
-        v_means=v_means,
-        w_means=w_means,
-        u_stds=u_stds,
-        v_stds=v_stds,
-        w_stds=w_stds,
+        stats=stats,
     )
-
 
     session.commit()

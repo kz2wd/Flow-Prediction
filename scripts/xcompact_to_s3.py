@@ -10,6 +10,7 @@ import dask.array as da
 from dask import delayed
 from dask.diagnostics import ProgressBar
 
+from scripts.parser_utils import dir_path
 from space_exploration.dataset import s3_access
 
 
@@ -23,11 +24,6 @@ def get_shape_from_xdmf(folder, snapshot_index):
             return dims  # (nz, ny, nx)
     raise ValueError("Could not find grid dimensions in XDMF.")
 
-def dir_path(string):
-    if os.path.isdir(string):
-        return string
-    else:
-        raise NotADirectoryError(string)
 
 def load_velocity_snapshot(snapshot_index, dims, folder, dtype=np.float32):
     nx, ny, nz = dims[::-1]  # because dims = (nz, ny, nx)
