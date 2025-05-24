@@ -5,6 +5,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from space_exploration.beans.alchemy_base import Base
+from space_exploration.beans.channel_bean import Channel
+from space_exploration.beans.channel_y_bean import ChannelY
+from space_exploration.beans.dataset_bean import Dataset
+from space_exploration.beans.dataset_stat_bean import DatasetStat
+from space_exploration.beans.prediction_subspace_bean import PredictionSubSpace
 
 creds_path = Path.home() / ".pg_creds.json"
 with open(creds_path) as f:
@@ -14,6 +19,14 @@ url = f"postgresql://{creds['user']}:{creds['password']}@{creds['host']}:{creds[
 
 def get_db_url():
     return url
+
+# IMPORT ALL THE BEANS TO MAKE SURE THEY ARE LOADED AT RUNTIME !!! :)
+Channel()
+ChannelY()
+Dataset()
+DatasetStat()
+PredictionSubSpace()
+
 
 engine = create_engine(get_db_url())
 Session = sessionmaker(bind=engine)

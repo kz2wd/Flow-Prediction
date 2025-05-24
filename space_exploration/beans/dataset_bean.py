@@ -17,17 +17,17 @@ class Dataset(Base):
     s3_storage_name = Column(String, unique=True)
     scaling = Column(Float)
     stats = relationship("DatasetStat", back_populates="dataset", cascade="all, delete-orphan")
-
-
+    channel_id = Column(Integer, ForeignKey('channels.id'))
+    channel = relationship("Channel")
 
     def load_s3(self):
         s3_map = s3_access.get_s3_map(f"s3://simulations/{self.s3_storage_name}")
         return da.from_zarr(s3_map)
 
 
-    def get_training_dataset(self, channel: SimulationChannel, normalizer: NormalizerBase, size):
+    def get_training_dataset(self, normalizer: NormalizerBase, max_y, size=-1):
         ds = self.load_s3()[:size]
-        s3 = S3Dataset(ds, channel, normalizer)
+        s3 = S3Dataset(ds, max_y, normalizer)
         return s3
 
 

@@ -6,12 +6,12 @@ from space_exploration.simulation_channel.SimulationChannel import SimulationCha
 
 
 class S3Dataset(Dataset):
-    def __init__(self, ds, channel: SimulationChannel, normalizer: NormalizerBase):
+    def __init__(self, ds, max_y, normalizer: NormalizerBase):
 
         self.ds = normalizer.normalize(ds)
 
         self.x = self.ds[..., :, :, 1, :]  # [B, 3, x, 1, z]
-        self.y = self.ds[..., :, :, channel.prediction_sub_space.y[1], :]  # [B, 3, x, y, z]
+        self.y = self.ds[..., :, :, :max_y, :]  # [B, 3, x, y, z]
 
     def __len__(self):
         return len(self.x)
