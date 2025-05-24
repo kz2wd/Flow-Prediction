@@ -1,16 +1,12 @@
 import numpy as np
-from sqlalchemy.orm import sessionmaker
 
-from space_exploration.beans.alchemy_base import Base
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.beans.dataset_stat_bean import DatasetStat
 from space_exploration.dataset import db_access
 from space_exploration.FolderManager import FolderManager
 from space_exploration.beans.dataset_bean import Dataset
-from space_exploration.simulation_channel.ChannelData import ChannelData
 
 from pathlib import Path
-from sqlalchemy import create_engine
 
 
 def add_dataset(session, name, s3_storage_name, channel, scaling, u_means,

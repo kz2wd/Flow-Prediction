@@ -7,17 +7,11 @@ class YAlongComponentNormalizer(NormalizerBase):
 
     def __init__(self, dataset):
         super().__init__(dataset)
-        self.w_stds = None
-        self.v_stds = None
-        self.u_stds = None
-        self.w_means = None
-        self.v_means = None
-        self.u_means = None
+        self.stats = dataset.get_stats()
+
 
     def denormalize(self, ds):
-        return y_along_component_denormalize(ds, self.u_means, self.v_means, self.w_means,
-                                             self.u_stds, self.v_stds, self.w_stds)
+        return y_along_component_denormalize(ds, self.stats)
 
     def normalize(self, ds):
-        return y_along_component_normalize(ds, self.u_means, self.v_means, self.w_means,
-                                           self.u_stds, self.v_stds, self.w_stds)
+        return y_along_component_normalize(ds, self.stats)

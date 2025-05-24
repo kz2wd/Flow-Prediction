@@ -6,7 +6,7 @@ from dask.diagnostics import ProgressBar
 
 from space_exploration.FolderManager import FolderManager
 from space_exploration.dataset import s3_access
-from space_exploration.simulation_channel.ChannelData import ChannelData
+from space_exploration.dataset.ChannelData import ChannelData
 
 if __name__ == "__main__":
     fs = s3_access.fs

@@ -2,7 +2,6 @@ import torch
 from torch.utils.data import Dataset
 
 from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
-from space_exploration.simulation_channel.SimulationChannel import SimulationChannel
 
 
 class S3Dataset(Dataset):

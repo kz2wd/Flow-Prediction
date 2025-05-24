@@ -1,3 +1,4 @@
+import numpy as np
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import relationship
 
@@ -14,11 +15,11 @@ class Channel(Base):
     x_length = Column(Float)
     z_length = Column(Float)
     y_dimension = relationship("ChannelY", back_populates="channel", cascade="all, delete-orphan")
-    # datasets = relationship("Dataset", back_populates="channel")
 
-    # TODO
     def get_simulation_channel(self):
-        channel = SimulationChannel(self.x_length, self.x_resolution, self.z_length, self.z_resolution)
+        y_dimension = np.array([channel_y.y_coord for channel_y in self.y_dimension])
+        channel = SimulationChannel(self.x_length, self.x_resolution, self.z_length, self.z_resolution, y_dimension)
+        return channel
 
     @staticmethod
     def get_channel(session, name):

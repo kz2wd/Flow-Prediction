@@ -18,5 +18,8 @@ if __name__ == '__main__':
         print("Dataset not found")
         exit(1)
 
-    dataset = result.get_training_dataset(NotNormalized(), 64, 10)
-    print(dataset.ds.mean().compute())
+    sim_channel = result.channel.get_simulation_channel()
+    print(sim_channel.y_dimension)
+
+    analyzer = result.get_dataset_analyzer()
+    print(analyzer.ds.mean().compute())
