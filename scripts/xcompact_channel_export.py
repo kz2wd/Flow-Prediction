@@ -38,7 +38,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--simulation-path", required=True, type=dir_path)
     parser.add_argument("--channel-name", required=True, type=str)
-    parser.add_argument("--channel-scale", required=True, type=float)
+    parser.add_argument("--channel-scale", required=False, const=1.0, type=float)
     parser.add_argument("--input-file", type=str)
 
     args = parser.parse_args()
@@ -62,4 +62,4 @@ if __name__ == '__main__':
 
     session.commit()
 
-    print(f"Added channel [{args.channel_name}].")
+    print(f"Channel [{args.channel_name}] exported ✅")

@@ -13,7 +13,7 @@ def add_dataset(session, name, s3_storage_name, channel, scaling, stats):
         channel=channel,
     )
 
-    for i in range(64):
+    for i in range(len(stats.u_means)):
         stat = DatasetStat(
             y_index=i,
             u_mean=float(stats.u_means[i]),
@@ -24,7 +24,6 @@ def add_dataset(session, name, s3_storage_name, channel, scaling, stats):
             w_std=float(stats.w_stds[i]),
         )
         dataset.stats.append(stat)
-
 
     session.add(dataset)
 

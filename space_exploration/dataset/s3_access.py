@@ -1,5 +1,5 @@
 import s3fs
-
+import dask.array as da
 
 # Set it in ~/.aws/credentials:
 """
@@ -14,3 +14,6 @@ fs = s3fs.S3FileSystem(profile='default', client_kwargs={
 
 def get_s3_map(file_path):
     return s3fs.S3Map(root=file_path, s3=fs, check=False)
+
+def get_ds(file_path):
+    return da.from_zarr(get_s3_map(file_path))
