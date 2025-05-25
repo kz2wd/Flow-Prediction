@@ -22,5 +22,5 @@ class DatasetAnalyzer:
         plt.legend()
         plt.grid(True)
         plt.savefig(fig_name)
-        print(f"Saved figure [{fig_name}]!")
+        print(f"✅ Saved figure [{fig_name}]!")
 

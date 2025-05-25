@@ -24,8 +24,7 @@ class Dataset(Base):
     channel = relationship("Channel")
 
     def load_s3(self):
-        s3_map = s3_access.get_s3_map(f"s3://simulations/{self.s3_storage_name}")
-        return da.from_zarr(s3_map)
+        return s3_access.get_ds(self.s3_storage_name)
 
     def get_stats(self):
         u_means = []
@@ -50,6 +49,17 @@ class Dataset(Base):
 
     def get_dataset_analyzer(self):
         return DatasetAnalyzer(self.load_s3(), self.scaling, self.channel.get_simulation_channel())
+
+    @staticmethod
+    def get_dataset_or_fail(session, name):
+        result: Dataset | None = session.query(Dataset).filter_by(name=name).first()
+        if result is None:
+            print(f"Dataset [{name}] not found ❌")
+            print("Available datasets:")
+            print(*(dataset.name for dataset in session.query(Dataset).all()))
+            exit(1)
+        return result
+
 
 
 

@@ -17,3 +17,7 @@ def get_s3_map(file_path):
 
 def get_ds(file_path):
     return da.from_zarr(get_s3_map(file_path))
+
+def store_ds(ds, file_path):
+    store = get_s3_map(file_path)
+    ds.to_zarr(store, overwrite=True)

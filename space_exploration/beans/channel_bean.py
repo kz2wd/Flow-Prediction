@@ -26,3 +26,13 @@ class Channel(Base):
     @staticmethod
     def get_channel(session, name):
         return session.query(Channel).filter_by(name=name).first()
+
+    @staticmethod
+    def get_channel_or_fail(session, name):
+        channel = Channel.get_channel(session, name)
+        if channel is None:
+            print(f"Channel {name} not found ❌")
+            print("Available channels:")
+            print(*(channel.name for channel in session.query(Channel).all()))
+            exit(1)
+        return channel

@@ -42,3 +42,4 @@ def add_channel(session, name, x_resolution, x_length, y_dimension, z_resolution
         channel.y_dimension.append(channel_y)
 
     session.add(channel)
+    return channel

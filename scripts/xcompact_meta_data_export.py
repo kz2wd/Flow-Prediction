@@ -1,10 +1,9 @@
 import argparse
 
-from scripts.database_add import add_dataset
 from scripts.parser_utils import dir_path
+from scripts.xcompact_utils import build_export_metadata
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import db_access
-from space_exploration.dataset.dataset_stat import DatasetStats
 from space_exploration.dataset.s3_access import get_ds
 
 if __name__ == "__main__":
@@ -19,25 +18,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    channel = Channel.get_channel(session, args.existing_channel_name)
-    if channel is None:
-        print(f"Channel {args.existing_channel_name} not found ❌")
-        print("Available channels:")
-        print(*(channel.name for channel in session.query(Channel).all()))
-        exit(1)
+    channel = Channel.get_channel_or_fail(session, args.existing_channel_name)
 
     ds = get_ds(args.s3_dataset)
-
-    stats = DatasetStats.from_ds(ds)
-
-    add_dataset(
-        session=session,
-        name=args.dataset_name,
-        s3_storage_name=args.s3_dataset,
-        scaling=args.scaling,
-        channel=channel,
-        stats=stats,
-    )
+    build_export_metadata(session, ds, args.s3_dataset, args.dataset_name, args.scaling, channel)
 
     session.commit()
 
