@@ -19,4 +19,6 @@ if __name__ == '__main__':
     dataset = Dataset.get_dataset_or_fail(session, target_dataset)
 
     analyzer = dataset.get_dataset_analyzer()
-    analyzer.plot_u_velo_along_y(f"{target_dataset}-velocities.png")
+    # analyzer.plot_u_velo_along_y(f"{target_dataset}-velocities.png")
+    # analyzer.plot_stds(f"{target_dataset}-stds.png")
+    analyzer.plot_velocity_fluctuation(f"{target_dataset}-fluctuations.png")
