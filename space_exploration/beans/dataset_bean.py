@@ -12,6 +12,7 @@ from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
 from space_exploration.dataset.s3_dataset import S3Dataset
 from space_exploration.simulation_channel.SimulationChannel import SimulationChannel
 
+BENCHMARK_BUCKET = "benchmarks"
 
 class Dataset(Base):
     __tablename__ = 'datasets'
@@ -22,6 +23,10 @@ class Dataset(Base):
     stats = relationship("DatasetStat", back_populates="dataset", cascade="all, delete-orphan")
     channel_id = Column(Integer, ForeignKey('channels.id'))
     channel = relationship("Channel")
+
+
+    def get_benchmark_storage_name(self):
+        return f"s3://{BENCHMARK_BUCKET}/dt-{self.name}.parquet"
 
     def load_s3(self):
         return s3_access.get_ds(self.s3_storage_name)
@@ -41,6 +46,11 @@ class Dataset(Base):
             v_stds.append(stat.v_std)
             w_stds.append(stat.w_std)
         return DatasetStats(np.array(u_means), np.array(v_means), np.array(w_means), np.array(u_stds), np.array(v_stds), np.array(w_stds))
+
+    def create_benchmark(self):
+        pass
+
+
 
     def get_training_dataset(self, normalizer: NormalizerBase, max_y, size=-1):
         ds = self.load_s3()[:size]

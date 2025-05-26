@@ -48,11 +48,11 @@ class DatasetAnalyzer:
         with ProgressBar():
             squared_velocity_mean = (fluctuation_mean ** 2).mean(axis=(0, 2, 4)).compute()
 
-        plt.plot(self.channel.y_dimension[1:self.max_y] * self.channel.y_scale_to_y_plus,
+        plt.semilogx(self.channel.y_dimension[1:self.max_y] * self.channel.y_scale_to_y_plus,
                  squared_velocity_mean[0, 1:] * self.dataset_scaling, label="u2")
-        plt.plot(self.channel.y_dimension[1:self.max_y] * self.channel.y_scale_to_y_plus,
+        plt.semilogx(self.channel.y_dimension[1:self.max_y] * self.channel.y_scale_to_y_plus,
                  squared_velocity_mean[1, 1:] * self.dataset_scaling, label="v2")
-        plt.plot(self.channel.y_dimension[1:self.max_y] * self.channel.y_scale_to_y_plus,
+        plt.semilogx(   self.channel.y_dimension[1:self.max_y] * self.channel.y_scale_to_y_plus,
                  squared_velocity_mean[2, 1:] * self.dataset_scaling, label="w2")
         plt.title("Mean-squared velocity fluctuations")
         plt.legend()
