@@ -1,14 +1,20 @@
+import functools
+from functools import lru_cache, cache
+
 import dask.array as da
 import numpy as np
 from sqlalchemy import create_engine, Column, String, Float, DateTime, Boolean, Integer, ForeignKey
 
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from space_exploration.beans.alchemy_base import Base
+from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
+from space_exploration.dataset.benchmark import benchmark_dataset
 from space_exploration.dataset.dataset_stat import DatasetStats
 from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
+from space_exploration.dataset.s3_access import load_df, exist
 from space_exploration.dataset.s3_dataset import S3Dataset
 from space_exploration.simulation_channel.SimulationChannel import SimulationChannel
 
@@ -22,8 +28,7 @@ class Dataset(Base):
     scaling = Column(Float)
     stats = relationship("DatasetStat", back_populates="dataset", cascade="all, delete-orphan")
     channel_id = Column(Integer, ForeignKey('channels.id'))
-    channel = relationship("Channel")
-
+    channel: Mapped[Channel] = relationship("Channel")
 
     def get_benchmark_storage_name(self):
         return f"s3://{BENCHMARK_BUCKET}/dt-{self.name}.parquet"
@@ -47,10 +52,12 @@ class Dataset(Base):
             w_stds.append(stat.w_std)
         return DatasetStats(np.array(u_means), np.array(v_means), np.array(w_means), np.array(u_stds), np.array(v_stds), np.array(w_stds))
 
+    @functools.cached_property
+    def size(self):
+        return self.load_s3().shape[0]
+
     def create_benchmark(self):
-        pass
-
-
+        benchmark_dataset(self)
 
     def get_training_dataset(self, normalizer: NormalizerBase, max_y, size=-1):
         ds = self.load_s3()[:size]
@@ -59,6 +66,10 @@ class Dataset(Base):
 
     def get_dataset_analyzer(self):
         return DatasetAnalyzer(self.load_s3(), self.scaling, self.channel.get_simulation_channel())
+
+    @functools.cached_property
+    def benchmark_df(self):
+        return load_df(self.get_benchmark_storage_name())
 
     @staticmethod
     def get_dataset_or_fail(session, name):

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Type
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -39,3 +40,6 @@ def get_session():
         Base.metadata.create_all(engine)
         table_init = True
     return Session()
+
+def get_full_base():
+    return Base

@@ -27,14 +27,15 @@ def add_dataset(session, name, s3_storage_name, channel, scaling, stats):
 
     session.add(dataset)
 
-def add_channel(session, name, x_resolution, x_length, y_dimension, z_resolution, z_length, y_scale_to_y_plus):
+def add_channel(session, name, x_resolution, x_length, y_dimension, z_resolution, z_length, y_scale_to_y_plus, discard_first_y=False):
     channel = Channel(
         name=name,
         x_resolution=x_resolution,
         x_length=float(x_length),
         z_resolution=z_resolution,
         z_length=float(z_length),
-        y_scale_to_y_plus=y_scale_to_y_plus
+        y_scale_to_y_plus=y_scale_to_y_plus,
+        discard_first_y=discard_first_y
     )
 
     for i, coord in enumerate(y_dimension):
