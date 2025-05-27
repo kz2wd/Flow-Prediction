@@ -32,9 +32,29 @@ def u_velo_along_y(ids):
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
     filtered_df = filtered_df[filtered_df["component"] == "u"]
 
-    fig = px.line(filtered_df, x="y_dimension", y="velocity_mean", color="name")
+    fig = px.line(filtered_df, x="y_dimension", y="velocity_mean", color="name", log_x=True)
     fig.update_layout(title="Dataset Velocities")
     return fig
 
+
+@visualization("Stds")
+def stds(ids):
+    filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
+    filtered_df = filtered_df[filtered_df["component"] == "u"]
+
+    fig = px.line(filtered_df, x="y_dimension", y="velocity_std", color="name")
+    fig.update_layout(title="velocity_std")
+    return fig
+
+
+
+@visualization("squared_velocity_mean")
+def squared_velocity_mean(ids):
+    filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
+    filtered_df = filtered_df[filtered_df["component"] == "u"]
+
+    fig = px.line(filtered_df, x="y_dimension", y="squared_velocity_mean", color="name")
+    fig.update_layout(title="squared_velocity_mean")
+    return fig
 
 
