@@ -46,9 +46,7 @@ app.layout = html.Div([
 def update_graph(n_clicks, selected_ids, viz_name):
     if not selected_ids or not viz_name:
         return go.Figure()
-
-    datasets = session.query(Dataset).filter(Dataset.id.in_(selected_ids)).all()
-    fig = DATASET_VISUALIZATIONS[viz_name](datasets)
+    fig = DATASET_VISUALIZATIONS[viz_name](selected_ids)
     return fig
 
 if __name__ == '__main__':

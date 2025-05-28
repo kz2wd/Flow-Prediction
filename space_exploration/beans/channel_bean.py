@@ -1,5 +1,5 @@
 import numpy as np
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, Boolean
 from sqlalchemy.orm import relationship
 
 from space_exploration.beans.alchemy_base import Base
@@ -16,8 +16,9 @@ class Channel(Base):
     z_length = Column(Float)
     y_scale_to_y_plus = Column(Float)
     y_dimension = relationship("ChannelY", back_populates="channel", cascade="all, delete-orphan")
+    discard_first_y = Column(Boolean, default=False)  # When value too close to wall used, 'breaks' graphs
 
-    def get_simulation_channel(self):
+    def get_simulation_channel(self) -> SimulationChannel:
         y_dimension = np.array([channel_y.y_coord for channel_y in self.y_dimension])
         channel = SimulationChannel(self.x_length, self.x_resolution, self.z_length, self.z_resolution, y_dimension,
                                     self.y_scale_to_y_plus)

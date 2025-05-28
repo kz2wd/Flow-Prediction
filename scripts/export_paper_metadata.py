@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     add_dataset(
         session=session,
-        name="paper-validation",
+        name="simulations/paper-validation",
         s3_storage_name="paper-dataset.zarr",
         scaling=100 / 3,
         channel=channel,

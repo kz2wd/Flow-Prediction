@@ -16,6 +16,8 @@ if __name__ == '__main__':
                 64, np.pi,
                 y_dim,
                 64, np.pi / 2,
-                200)
+                200,
+                discard_first_y=True,
+                )
 
     session.commit()
