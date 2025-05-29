@@ -23,11 +23,11 @@ def benchmark_dataset(ds_bean: 'Dataset'):
     ds = ds[:, :, :, y_start:, :]
 
     with ProgressBar():
-        velocity_mean = ds.mean(axis=(0, 2, 4))
-        velocity_std = ds.std(axis=(2, 4)).mean(axis=0).compute()
-        fluctuation_mean = ds - velocity_mean[None, :, None, :, None]
-        squared_velocity_mean = (fluctuation_mean ** 2).mean(axis=(0, 2, 4)).compute()
-
+        velocity_mean = ds.mean(axis=(0, 2, 4)).compute()  # (3, y)
+        velocity_std = ds.std(axis=(2, 4)).mean(axis=0).compute()  # (3, y)
+        fluctuation = ds - velocity_mean[None, :, None, :, None]
+        squared_velocity_mean = (fluctuation ** 2).mean(axis=(0, 2, 4)).compute()  # (3, y)
+        reynolds_uv = (fluctuation[:, 0] * fluctuation[:, 1]).mean(axis=(0, 1, 3)).compute()  # (y,)
 
     components = ['u', 'v', 'w']
     num_components = 3
@@ -40,6 +40,7 @@ def benchmark_dataset(ds_bean: 'Dataset'):
         'velocity_mean': velocity_mean.flatten(),
         'velocity_std': velocity_std.flatten(),
         'squared_velocity_mean': squared_velocity_mean.flatten(),
+        'reynolds_uv': np.tile(reynolds_uv.flatten(), num_components),
         'dataset_id': ds_bean.id,
         'name': str(ds_bean.name),
     }

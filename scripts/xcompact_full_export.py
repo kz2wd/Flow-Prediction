@@ -9,6 +9,7 @@ from scripts.parser_utils import dir_path
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import s3_access, db_access
 
+
 if __name__ == "__main__":
     session = db_access.get_session()
 
@@ -16,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument("--simulation-folder", required=True, type=dir_path, help="Folder containing the simulation")
     parser.add_argument("--s3-storage-name", required=True, type=str, help="Name of the s3 storage, looks like bucket/dataset.zarr -> simulations/XXX.zarr")
     parser.add_argument("--dataset-name", required=True, type=str, help="the name of the dataset for it to be fetched from the code")
-    parser.add_argument("--dataset-scaling", default=100 / 3, type=float, help="Arbitrary scaling value for the dataset, in the paper it was 100 / 3")
+    parser.add_argument("--dataset-scaling", default=20, type=float, help="Arbitrary scaling value for the dataset, in the paper it was 100 / 3")
     parser.add_argument("--channel-name", required=True, type=str, help="Name of the channel that the dataset is in, will try to to find existing match, otherwise, will create a new one, check channel scale & input file")
     parser.add_argument("--channel-scale", default=200, type=float, help="arbitrary value for the y scale of the channel dimension to reach y+ = 200 at y= 1")
     parser.add_argument("--i3d-input-file", type=str, help="Use it if simulation input file is not in the simulation folders and name input.i3d")

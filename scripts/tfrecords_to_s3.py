@@ -2,142 +2,93 @@ import os
 import re
 
 import numpy as np
+import dask.array as da
 
 from space_exploration.FolderManager import FolderManager
 
 import tensorflow as tf
 
+from space_exploration.beans.dataset_bean import Dataset
+from space_exploration.dataset import s3_access, db_access
+from space_exploration.dataset.ds_helper import y_along_component_denormalize
+
+
 def main():
     # dataset_train, dataset_valid = generate_pipeline_training(root_folder, batch_size=1)
-    dataset_valid = generate_pipeline_training(batch_size=1)
-
-    itr = iter(dataset_valid)
+    dataset_valid = generate_dataset()
 
     nx = 64
     ny = 64
     nz = 64
 
-    n_samp = 100
-    x_target = np.zeros((n_samp, nx, 1, nz, 3), np.float32)
-    y_target = np.zeros((n_samp, nx, ny, nz, 3), np.float32)
-    y_predic = np.zeros((n_samp, nx, ny, nz, 3), np.float32)
+    dataset_y = [y for x, y in dataset_valid]  # dataset_y is of shape N, x, y, z, 3
+    # Switch to shape N, 3, x, y, z
+    A = np.array(dataset_y)
 
-    for idx in range(n_samp):
-        if float.is_integer(idx / 50):
-            print(idx)
-            # print(idx)
-        x, y = next(itr)
+    correct = np.transpose(A, (0, 4, 1, 2, 3))
 
-        x_target[idx] = x.numpy()
-        y_target[idx] = y.numpy()
+    ds = da.from_array(correct, chunks=(50, 3, nx, ny, nz))
 
+    session = db_access.get_session()
+    dataset = Dataset.get_dataset_or_fail(session, "paper-validation")
+    stats = dataset.get_stats()
+    ds = y_along_component_denormalize(ds, stats)
 
-    # dataset_y = [y for x, y in dataset_valid]
-    # print(dataset_y)
-    # print(len(dataset_y))
+    s3_access.store_ds(ds, "simulations/paper-dataset.zarr")
+    print("✅ Exported paper dataset")
 
 
+def generate_dataset():
+    # Step 1: Gather all TFRecord files
+    target_folder = "train"
+    folder_path = FolderManager.tfrecords / target_folder
 
-def generate_pipeline_training(validation_split=0.2, shuffle_buffer=200, batch_size=4, n_prefetch=8):
-    tfr_path = str(FolderManager.tfrecords / "test")
-    tfr_files = sorted(
-        [os.path.join(tfr_path, f) for f in os.listdir(tfr_path) if os.path.isfile(os.path.join(tfr_path, f))])
-    regex = re.compile(f'.tfrecords')
-    tfr_files = ([string for string in tfr_files if re.search(regex, string)])
+    record_files = sorted([
 
-    n_samples_per_tfr = np.array([int(s.split('.')[-2][-3:]) for s in tfr_files])
-    n_samples_per_tfr = n_samples_per_tfr[np.argsort(-n_samples_per_tfr)]
-    cumulative_samples_per_tfr = np.cumsum(np.array(n_samples_per_tfr))
-    tot_samples_per_ds = sum(n_samples_per_tfr)
-    n_tfr_loaded_per_ds = int(tfr_files[0].split('_')[-3][-3:])
+        str(os.path.join(folder_path, file))
 
-    tfr_files = [string for string in tfr_files if int(string.split('_')[-3][:3]) <= n_tfr_loaded_per_ds]
+        for file in os.listdir(folder_path)
 
-    n_samp_train = int(sum(n_samples_per_tfr) * (1 - validation_split))
-    n_samp_valid = sum(n_samples_per_tfr) - n_samp_train
+        if file.endswith(".tfrecords")
 
-    (n_files_train, samples_train_left) = np.divmod(n_samp_train, n_samples_per_tfr[0])
+    ])
 
-    if samples_train_left > 0:
-        n_files_train += 1
+    if not record_files:
+        raise FileNotFoundError(f"No TFRecord files found in: {folder_path}")
 
-    tfr_files_train = [string for string in tfr_files if int(string.split('_')[-3][:3]) <= n_files_train]
-    n_tfr_left = np.sum(np.where(cumulative_samples_per_tfr < samples_train_left, 1, 0)) + 1
+    # Step 2: Split the file list
 
-    if sum([int(s.split('.')[-2][-2:]) for s in tfr_files_train]) != n_samp_train:
+    np.random.seed(0)
 
-        shared_tfr = tfr_files_train[-1]
-        tfr_files_valid = [shared_tfr]
-    else:
+    def build_dataset(file_list):
+        if len(file_list) == 0:
+            return None
 
-        shared_tfr = ''
-        tfr_files_valid = list()
 
-    tfr_files_valid.extend([string for string in tfr_files if string not in tfr_files_train])
-    tfr_files_valid = sorted(tfr_files_valid)
+        def is_valid(x):
+            return tf.size(x) > 0
 
-    shared_tfr_out = tf.constant(shared_tfr)
-    n_tfr_per_ds = tf.constant(n_tfr_loaded_per_ds)
-    n_samples_loaded_per_tfr = list()
 
-    if n_tfr_loaded_per_ds > 1:
+        ds = tf.data.Dataset.from_tensor_slices(file_list)
 
-        n_samples_loaded_per_tfr.extend(n_samples_per_tfr[:n_tfr_loaded_per_ds - 1])
-        n_samples_loaded_per_tfr.append(tot_samples_per_ds - cumulative_samples_per_tfr[n_tfr_loaded_per_ds - 2])
+        ds = ds.interleave(
+            lambda x: tf.data.TFRecordDataset(x),
+            cycle_length=tf.data.AUTOTUNE,
+            num_parallel_calls=tf.data.AUTOTUNE
 
-    else:
+        )
 
-        n_samples_loaded_per_tfr.append(tot_samples_per_ds)
+        ds = ds.filter(is_valid)
 
-    n_samples_loaded_per_tfr = np.array(n_samples_loaded_per_tfr)
+        ds = ds.map(
+            lambda record: tf_parser(record),
+            num_parallel_calls=tf.data.AUTOTUNE
+        )
 
-    tfr_files_train_ds = tf.data.Dataset.list_files(tfr_files_train, seed=666)
-    tfr_files_val_ds = tf.data.Dataset.list_files(tfr_files_valid, seed=686)
 
-    if n_tfr_left > 1:
+        return ds
 
-        samples_train_shared = samples_train_left - cumulative_samples_per_tfr[n_tfr_left - 2]
-        n_samples_tfr_shared = n_samples_loaded_per_tfr[n_tfr_left - 1]
-
-    else:
-
-        samples_train_shared = samples_train_left
-        n_samples_tfr_shared = n_samples_loaded_per_tfr[0]
-
-    tfr_files_train_ds = tfr_files_train_ds.interleave(
-        lambda x: tf.data.TFRecordDataset(x).take(samples_train_shared) if tf.math.equal(x,
-                                                                                         shared_tfr_out) else tf.data.TFRecordDataset(
-            x).take(tf.gather(n_samples_loaded_per_tfr,
-                              tf.strings.to_number(tf.strings.split(tf.strings.split(x, sep='_')[-3], sep='-')[0],
-                                                   tf.int32) - 1)),
-        cycle_length=16,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE
-    )
-
-    tfr_files_val_ds = tfr_files_val_ds.interleave(
-        lambda x: tf.data.TFRecordDataset(x).skip(samples_train_shared).take(
-            n_samples_tfr_shared - samples_train_shared) if tf.math.equal(x,
-                                                                          shared_tfr_out) else tf.data.TFRecordDataset(
-            x).take(tf.gather(n_samples_loaded_per_tfr,
-                              tf.strings.to_number(tf.strings.split(tf.strings.split(x, sep='_')[-3], sep='-')[0],
-                                                   tf.int32) - 1)),
-        cycle_length=16,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE
-    )
-
-    dataset_train = tfr_files_train_ds.map(lambda x: tf_parser(x),
-                                           num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset_train = dataset_train.shuffle(shuffle_buffer)
-    dataset_train = dataset_train.batch(batch_size=batch_size)
-    dataset_train = dataset_train.prefetch(n_prefetch)
-
-    dataset_valid = tfr_files_val_ds.map(lambda x: tf_parser(x),
-                                         num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset_valid = dataset_valid.shuffle(shuffle_buffer)
-    dataset_valid = dataset_valid.batch(batch_size=batch_size)
-    dataset_valid = dataset_valid.prefetch(n_prefetch)
-
-    return dataset_train, dataset_valid
+    return build_dataset(record_files)
 
 
 def tf_parser(rec):
