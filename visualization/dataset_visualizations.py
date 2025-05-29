@@ -40,9 +40,8 @@ def u_velo_along_y(ids):
 @visualization("Stds")
 def stds(ids):
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
-    filtered_df = filtered_df[filtered_df["component"] == "u"]
 
-    fig = px.line(filtered_df, x="y_dimension", y="velocity_std", color="name")
+    fig = px.line(filtered_df, x="y_dimension", y="velocity_std", color="name", line_dash="component")
     fig.update_layout(title="velocity_std")
     return fig
 

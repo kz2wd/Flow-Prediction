@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--simulation-path", required=True, type=dir_path)
     parser.add_argument("--channel-name", required=True, type=str)
-    parser.add_argument("--channel-scale", required=False, const=1.0, type=float)
+    parser.add_argument("--channel-scale", required=False, default=1, type=float)
     parser.add_argument("--input-file", type=str)
 
     args = parser.parse_args()
