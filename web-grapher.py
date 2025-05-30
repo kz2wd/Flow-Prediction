@@ -20,10 +20,12 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MORPH])
 app.layout = html.Div([
     html.H1("Research Visualization Tool"),
 
+    html.Button("Reload data", id="reload-data-btn", className="btn btn-secondary"),
+
     html.Label("Select Datasets:"),
     dcc.Dropdown(
         id="dataset-dropdown",
-        options=[{"label": ds.name, "value": ds.id} for ds in session.query(Dataset).all()],
+        options=[{"label": ds.name, "value": ds.id} for ds in session.query(Dataset).filter(Dataset.benchmark_df is not None)],
         multi=True
     ),
 
@@ -79,6 +81,19 @@ def update_channel_graph(n_clicks, selected_ids, viz_name):
     fig = CHANNEL_VISUALIZATIONS[viz_name](selected_ids)
     return fig
 
+
+@app.callback(
+Output("dataset-dropdown", "options"),
+    Input("reload-data-btn", "n_clicks"),
+
+)
+def reload_data(n_clicks):
+    datasets = session.query(Dataset).filter(Dataset.benchmark_df is not None)
+
+    for ds in datasets:
+        ds.reload_benchmark()
+
+    return [{"label": ds.name, "value": ds.id} for ds in datasets]
 
 if __name__ == '__main__':
     app.run(debug=True)

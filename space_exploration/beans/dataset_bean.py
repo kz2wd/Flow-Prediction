@@ -71,6 +71,9 @@ class Dataset(Base):
     def benchmark_df(self):
         return load_df(self.get_benchmark_storage_name())
 
+    def reload_benchmark(self):
+        self.__dict__.pop('benchmark_df', None)
+
     @staticmethod
     def get_dataset_or_fail(session, name):
         result: Dataset | None = session.query(Dataset).filter_by(name=name).first()

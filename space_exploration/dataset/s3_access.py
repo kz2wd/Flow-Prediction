@@ -36,7 +36,10 @@ def store_df(df, file_path):
 
 
 def load_df(file_path):
-    return pq.ParquetDataset(file_path, filesystem=fs).read_pandas().to_pandas()
+    try:
+        return pq.ParquetDataset(file_path, filesystem=fs).read_pandas().to_pandas()
+    except FileNotFoundError:
+        return None
 
 
 def exist(file_path):
