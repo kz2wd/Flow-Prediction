@@ -8,7 +8,7 @@ from space_exploration.beans.channel_bean import Channel
 from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.dataset import db_access
 from visualization.channel_visualizations import CHANNEL_VISUALIZATIONS
-from visualization.dataset_visualizations import DATASET_VISUALIZATIONS
+from visualization.dataset_visualizations import DATASET_VISUALIZATIONS, reload_combined_df
 
 # --- Setup SQLAlchemy ---
 session = db_access.get_session()
@@ -88,10 +88,12 @@ Output("dataset-dropdown", "options"),
 
 )
 def reload_data(n_clicks):
-    datasets = session.query(Dataset).filter(Dataset.benchmark_df is not None)
+    datasets = session.query(Dataset).all()
 
     for ds in datasets:
         ds.reload_benchmark()
+
+    reload_combined_df()
 
     return [{"label": ds.name, "value": ds.id} for ds in datasets]
 
