@@ -11,14 +11,14 @@ from space_exploration.beans.alchemy_base import Base
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
-from space_exploration.dataset.benchmark import benchmark_dataset
+from space_exploration.dataset.benchmark import benchmark_dataset, Benchmark
 from space_exploration.dataset.dataset_stat import DatasetStats
 from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
 from space_exploration.dataset.s3_access import load_df, exist
 from space_exploration.dataset.s3_dataset import S3Dataset
 from space_exploration.simulation_channel.SimulationChannel import SimulationChannel
 
-BENCHMARK_BUCKET = "benchmarks"
+
 
 class Dataset(Base):
     __tablename__ = 'datasets'
@@ -29,12 +29,6 @@ class Dataset(Base):
     stats = relationship("DatasetStat", back_populates="dataset", cascade="all, delete-orphan")
     channel_id = Column(Integer, ForeignKey('channels.id'))
     channel: Mapped[Channel] = relationship("Channel")
-
-    def get_analysis_storage_name(self):
-        return f"s3://{BENCHMARK_BUCKET}/analysis/dt-{self.name}.parquet"
-
-    def get_benchmark_storage_name(self):
-        return f"s3://{BENCHMARK_BUCKET}/dt-{self.name}.parquet"
 
     def load_s3(self):
         return s3_access.get_ds(self.s3_storage_name)
@@ -71,11 +65,11 @@ class Dataset(Base):
         return DatasetAnalyzer(self.load_s3(), self.scaling, self.channel.get_simulation_channel())
 
     @functools.cached_property
-    def benchmark_df(self):
-        return load_df(self.get_benchmark_storage_name())
+    def benchmark(self):
+        return Benchmark(self)
 
     def reload_benchmark(self):
-        self.__dict__.pop('benchmark_df', None)
+        self.__dict__.pop('benchmark', None)
 
     @staticmethod
     def get_dataset_or_fail(session, name):
@@ -86,8 +80,4 @@ class Dataset(Base):
             print(*(dataset.name for dataset in session.query(Dataset).all()))
             exit(1)
         return result
-
-
-
-
 

@@ -14,6 +14,30 @@ from sklearn.metrics import pairwise_distances
 from sklearn.cluster import KMeans
 
 
+class Benchmark:
+    BENCHMARK_BUCKET = "benchmarks"
+    BASE_DF = "base"
+    CHANNEL_DF = "channel"
+    COMPONENT_DF = "component"
+    def __init__(self, dataset: 'Dataset'):
+        self.dataset = dataset
+
+
+    def load(self):
+        self.base_df = s3_access.get_ds(self.get_benchmark_storage_name(self.BASE_DF))
+        self.channel_df = s3_access.get_ds(self.get_benchmark_storage_name(self.CHANNEL_DF))
+        self.component_df = s3_access.get_ds(self.get_benchmark_storage_name(self.COMPONENT_DF))
+
+    def compute(self):
+        print("Computing Benchmark Data")
+
+        s3_access.store_df()
+
+
+    def get_benchmark_storage_name(self, df_type):
+        return f"s3://{self.BENCHMARK_BUCKET}/{self.dataset.name}/{df_type}.parquet"
+
+
 def compute_pca_coverage(ds, n_components=50):
     N = ds.shape[0]
     spatial_dims = np.prod(ds.shape[2:])
@@ -103,6 +127,7 @@ def hard_benchmark(ds, y_dimension, ds_bean: 'Dataset'):
 
 
 def analysis(ds, ds_bean: 'Dataset'):
+    print("Computing analysis")
     data = {
         **compute_pca_coverage(ds),
         **compute_state_coverage(ds),
