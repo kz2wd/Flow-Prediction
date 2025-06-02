@@ -30,6 +30,9 @@ class Dataset(Base):
     channel_id = Column(Integer, ForeignKey('channels.id'))
     channel: Mapped[Channel] = relationship("Channel")
 
+    def get_analysis_storage_name(self):
+        return f"s3://{BENCHMARK_BUCKET}/analysis/dt-{self.name}.parquet"
+
     def get_benchmark_storage_name(self):
         return f"s3://{BENCHMARK_BUCKET}/dt-{self.name}.parquet"
 
