@@ -13,7 +13,14 @@ def visualization(name):
         return func
     return decorator
 
-combined_df = pd.concat((ds.benchmark_df for ds in db_access.get_session().query(Dataset).all()), ignore_index=True)
+
+combined_df = None
+
+def reload_combined_df():
+    global combined_df
+    combined_df = pd.concat((ds.benchmark_df for ds in db_access.get_session().query(Dataset).all()), ignore_index=True)
+
+reload_combined_df()
 
 def get_datasets(ids):
     return db_access.get_session().query(Dataset).filter(Dataset.id.in_(ids)).all()
