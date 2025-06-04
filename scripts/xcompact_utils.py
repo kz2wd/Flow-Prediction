@@ -72,6 +72,16 @@ def build_export_metadata(session, ds, s3_file_name, dataset_name, scaling, chan
         stats=stats,
     )
 
+def get_chunk_size(inner_shape, target_chunk_MB = 200):
+    dtype = np.float32
+
+    bytes_per_sample = np.prod(inner_shape) * np.dtype(dtype).itemsize
+
+    target_chunk_bytes = target_chunk_MB * 1024 ** 2
+
+    samples_per_chunk = target_chunk_bytes // bytes_per_sample
+    return samples_per_chunk, *inner_shape
+
 
 def read_ypi(folder):
     with open(folder / "ypi.dat", 'r') as f:

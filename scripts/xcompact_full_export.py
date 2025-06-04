@@ -37,6 +37,7 @@ if __name__ == "__main__":
 
     ds = xc_utils.get_snapshot_ds(simulation_folder)
 
+
     print(f"Prepared dataset of shape {ds.shape}")
     done = False
     while not done:
@@ -51,6 +52,11 @@ if __name__ == "__main__":
 
     ds = ds[..., :y_lim, :]
     print(f"New shape {ds.shape}")
+
+    chunk_size = xc_utils.get_chunk_size(ds.shape[1:])
+    ds = ds.rechunk(chunk_size)
+
+    print(f"Chunk size: {ds.chunksize}")
 
     print("Building & Uploading dataset to S3 bucket")
     with ProgressBar():
