@@ -18,6 +18,7 @@ class FolderManager:
     _logs = Path(FOLDER_PREFIX) / "logs"
     tfrecords = Path(FOLDER_PREFIX) / "tfrecords"
     dataset = Path(FOLDER_PREFIX) / "dataset"
+    _artifacts = Path(FOLDER_PREFIX) / "artifacts"
 
     @staticmethod
     def init(model: 'GAN3D'):
@@ -25,6 +26,7 @@ class FolderManager:
         FolderManager.generated_data(model).mkdir(parents=True, exist_ok=True)
         FolderManager.logs(model).mkdir(parents=True, exist_ok=True)
         FolderManager.dataset.mkdir(parents=True, exist_ok=True)
+        FolderManager.artifact_backup_folder(model).mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def checkpoints(model: 'GAN3D'):
@@ -45,3 +47,7 @@ class FolderManager:
     @staticmethod
     def predictions_file(model: 'GAN3D'):
         return FolderManager.generated_data(model) / "predictions.hdf5"
+
+    @staticmethod
+    def artifact_backup_folder(model):
+        return FolderManager._artifacts / (model if isinstance(model, str) else model.name)

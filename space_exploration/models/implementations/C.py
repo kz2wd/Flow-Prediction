@@ -3,12 +3,13 @@ from torch import nn
 from space_exploration.models.PaperBase import PaperBase
 from space_exploration.models.utils import ResBlockGen, UpSamplingBlock
 from space_exploration.simulation_channel import SimulationChannel
+from space_exploration.simulation_channel.PredictionSubSpace import PredictionSubSpace
 
 
 class Generator(nn.Module):
-    def __init__(self, channel: SimulationChannel, input_channels=3, n_residual_blocks=32, output_channels=3):
+    def __init__(self, prediction_sub_space: PredictionSubSpace, input_channels=3, n_residual_blocks=32, output_channels=3):
         super().__init__()
-        self.ny = channel.prediction_sub_space.y[1]
+        self.ny = prediction_sub_space.y[1]
 
         self.initial = nn.Sequential(
             nn.Conv3d(input_channels, 64, kernel_size=9, stride=1, padding=4),
@@ -33,7 +34,6 @@ class Generator(nn.Module):
         self.output_conv = nn.Conv3d(256, output_channels, kernel_size=9, stride=1, padding=4)
 
     def forward(self, x):
-        x = x.permute(0, 4, 1, 2, 3)  # (B, C, X, Y, Z)
         x = self.initial(x)
         # x = self.up_sample_1(x)
         up_samp = self.up_sampling(x)
@@ -41,12 +41,11 @@ class Generator(nn.Module):
         x = x + up_samp
         x = self.conv2(x)
         x = self.output_conv(x)
-        x = x.permute(0, 2, 3, 4, 1)  # put it back ...
         return x
 
 class C(PaperBase):
-    def __init__(self, name, checkpoint):
-        super().__init__(name, checkpoint, 32)
+    def __init__(self, name):
+        super().__init__(name, PredictionSubSpace(y_end=32))
 
-    def get_generator(self, channel: SimulationChannel):
-        return Generator(channel)
+    def get_generator(self, prediction_sub_space: PredictionSubSpace):
+        return Generator(prediction_sub_space)

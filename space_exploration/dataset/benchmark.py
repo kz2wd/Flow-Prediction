@@ -143,3 +143,6 @@ def prediction_difficulty(ds, n_clusters=10):
         "max_variance_per_cluster": np.max(per_cluster_var),
     }
 
+
+def benchmark_dataset(ds):
+    print("Im old...")

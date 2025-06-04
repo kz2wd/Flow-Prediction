@@ -1,4 +1,5 @@
 import torch
+from dask.diagnostics import ProgressBar
 from torch.utils.data import Dataset
 
 from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
@@ -8,8 +9,11 @@ class S3Dataset(Dataset):
     def __init__(self, ds, max_y, normalizer: NormalizerBase):
 
         self.ds = normalizer.normalize(ds)
+        print("⌛ Initializing Dataset...")
+        with ProgressBar():
+            self.ds = self.ds.compute()
 
-        self.x = self.ds[..., :, :, 1, :]  # [B, 3, x, 1, z]
+        self.x = self.ds[..., :, :, :1, :]  # [B, 3, x, 1, z]
         self.y = self.ds[..., :, :, :max_y, :]  # [B, 3, x, y, z]
 
     def __len__(self):

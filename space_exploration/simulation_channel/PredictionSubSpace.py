@@ -1,6 +1,6 @@
 
 class PredictionSubSpace:
-    def __init__(self, x_start, x_end, y_start, y_end, z_start, z_end, ):
+    def __init__(self, x_start=0, x_end=64, y_start=0, y_end=64, z_start=0, z_end=64):
         self.x = (x_start, x_end)
         self.y = (y_start, y_end)
         self.z = (z_start, z_end)

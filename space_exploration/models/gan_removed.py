@@ -65,70 +65,58 @@ def benchmark(self):
                            })
 
 
-def train(self, epochs, saving_freq, batch_size, sample_amount=-1):
+def train(model, dataset, max_epochs=50, saving_freq=5):
     # Dataloaders
     mlflow.set_tracking_uri("http://localhost:5000")
 
-    dataset_train, dataset_valid, dataset_test = self.get_split_datasets(FolderManager.dataset / "test.hdf5",
-                                                                         batch_size, sample_amount)
-    nx, ny, nz = self.channel.prediction_sub_space.x_size, self.channel.prediction_sub_space.y_size, self.channel.prediction_sub_space.z_size
-    self.generator_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.learning_rate)
-    self.discriminator_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.learning_rate)
+    dataset_train, dataset_valid, dataset_test = model.get_split_datasets(dataset)
+    nx, ny, nz = model.channel.prediction_sub_space.x_size, model.channel.prediction_sub_space.y_size, model.channel.prediction_sub_space.z_size
+    model.generator_optimizer = torch.optim.Adam(model.generator.parameters())
+    model.discriminator_optimizer = torch.optim.Adam(model.discriminator.parameters())
 
     def train_step(x_target, y_target):
-        self.generator.train()
-        self.discriminator.train()
+        model.generator.train()
+        model.discriminator.train()
 
-        y_pred = self.generator(x_target)
+        y_pred = model.generator(x_target)
 
-        real_output = self.discriminator(y_target)
-        fake_output = self.discriminator(y_pred.detach())
+        real_output = model.discriminator(y_target)
+        fake_output = model.discriminator(y_pred.detach())
 
-        gen_loss = self.generator_loss(fake_output, y_pred, y_target)
-        disc_loss = self.discriminator_loss(real_output, fake_output)
+        gen_loss = model.generator_loss(fake_output, y_pred, y_target)
+        disc_loss = model.discriminator_loss(real_output, fake_output)
 
-        self.generator_optimizer.zero_grad()
+        model.generator_optimizer.zero_grad()
         gen_loss.backward(retain_graph=True)
-        self.generator_optimizer.step()
+        model.generator_optimizer.step()
 
-        self.discriminator_optimizer.zero_grad()
+        model.discriminator_optimizer.zero_grad()
         disc_loss.backward()
-        self.discriminator_optimizer.step()
+        model.discriminator_optimizer.step()
 
         return gen_loss.item(), disc_loss.item()
 
     def valid_step(x_target, y_target):
-        self.generator.eval()
-        self.discriminator.eval()
+        model.generator.eval()
+        model.discriminator.eval()
         with torch.no_grad():
-            y_pred = self.generator(x_target)
-            real_output = self.discriminator(y_target)
-            fake_output = self.discriminator(y_pred)
+            y_pred = model.generator(x_target)
+            real_output = model.discriminator(y_target)
+            fake_output = model.discriminator(y_pred)
 
-            gen_loss = self.generator_loss(fake_output, y_pred, y_target)
-            disc_loss = self.discriminator_loss(real_output, fake_output)
+            gen_loss = model.generator_loss(fake_output, y_pred, y_target)
+            disc_loss = model.discriminator_loss(real_output, fake_output)
 
         return gen_loss.item(), disc_loss.item()
 
-    # Paths
-    log_folder = FolderManager.logs(self)
-    log_folder.mkdir(parents=True, exist_ok=True)
-
-    checkpoint_dir = FolderManager.checkpoints(self)
-    checkpoint_prefix = checkpoint_dir / "ckpt"
-
-    log_path = log_folder / f"log_{self.name}.log"
-    with log_path.open("w") as fd:
-        fd.write("epoch,gen_loss,disc_loss,val_gen_loss,val_disc_loss,time\n")
-
     start_time = time.time()
     torch.autograd.set_detect_anomaly(True)
-    with mlflow.start_run(run_name=self.name):
+    with mlflow.start_run(run_name=model.name):
         mlflow.set_tag("model_type", "GAN")
         mlflow.log_params({
             "epochs": epochs,
             "saving_freq": saving_freq,
-            "model_name": self.name,
+            "model_name": model.name,
             "batch_size": batch_size,
             "dataset_size": sample_amount,
         })
@@ -140,13 +128,13 @@ def train(self, epochs, saving_freq, batch_size, sample_amount=-1):
             valid_disc_losses = []
 
             for x_target, y_target in tqdm.tqdm(dataset_train):
-                x_target, y_target = x_target.to(self.device), y_target.to(self.device)
+                x_target, y_target = x_target.to(model.device), y_target.to(model.device)
                 gen_loss, disc_loss = train_step(x_target, y_target)
                 train_gen_losses.append(gen_loss)
                 train_disc_losses.append(disc_loss)
 
             for x_target, y_target in tqdm.tqdm(dataset_valid):
-                x_target, y_target = x_target.to(self.device), y_target.to(self.device)
+                x_target, y_target = x_target.to(model.device), y_target.to(model.device)
                 gen_loss, disc_loss = valid_step(x_target, y_target)
                 valid_gen_losses.append(gen_loss)
                 valid_disc_losses.append(disc_loss)
@@ -159,10 +147,10 @@ def train(self, epochs, saving_freq, batch_size, sample_amount=-1):
             if epoch % saving_freq == 0:
                 torch.save({
                     'epoch': epoch,
-                    'generator_state_dict': self.generator.state_dict(),
-                    'discriminator_state_dict': self.discriminator.state_dict(),
-                    'gen_optimizer_state_dict': self.generator_optimizer.state_dict(),
-                    'disc_optimizer_state_dict': self.discriminator_optimizer.state_dict()
+                    'generator_state_dict': model.generator.state_dict(),
+                    'discriminator_state_dict': model.discriminator.state_dict(),
+                    'gen_optimizer_state_dict': model.generator_optimizer.state_dict(),
+                    'disc_optimizer_state_dict': model.discriminator_optimizer.state_dict()
                 }, checkpoint_prefix.with_suffix(f".e{epoch}.pt"))
 
             elapsed = time.time() - start_time

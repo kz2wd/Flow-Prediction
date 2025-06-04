@@ -16,22 +16,29 @@ from space_exploration.FolderManager import FolderManager
 from space_exploration.data_viz.PlotData import PlotData, save_benchmarks
 from space_exploration.models.dataset import HDF5Dataset
 from space_exploration.simulation_channel import SimulationChannel
+from space_exploration.simulation_channel.PredictionSubSpace import PredictionSubSpace
 from visualization.saving_file_names import *
 
 
-# Loss functions
+# Generator loss: content + adversarial
 def generator_loss(fake_y, y_pred, y_true):
-    adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
+    # Cast BCE inputs to float32
+    fake_y = fake_y.float()
+    adversarial_labels = (torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2).float()
     adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
 
     content_loss = F.mse_loss(y_pred, y_true, reduction='none').mean(dim=(1, 2, 3, 4))
-    total_loss = content_loss + 1e-3 * adversarial_loss
 
+    total_loss = content_loss + 1e-3 * adversarial_loss
     return total_loss.mean()
 
+# Discriminator loss: real + fake discrimination
 def discriminator_loss(real_y, fake_y):
-    real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
-    fake_labels = torch.rand_like(fake_y) * 0.2
+    # Cast BCE inputs to float32
+    real_y = real_y.float()
+    fake_y = fake_y.float()
+    real_labels = (torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2).float()
+    fake_labels = (torch.rand_like(fake_y) * 0.2).float()
 
     real_loss = F.binary_cross_entropy(real_y, real_labels, reduction='none')
     fake_loss = F.binary_cross_entropy(fake_y, fake_labels, reduction='none')
@@ -40,11 +47,12 @@ def discriminator_loss(real_y, fake_y):
     return total_loss.mean()
 
 class GAN3D(ABC):
-    def __init__(self, name, channel: SimulationChannel,
+    def __init__(self, name, prediction_sub_space: PredictionSubSpace,
                  n_residual_blocks=32, input_channels=3, output_channels=3):
 
-        self.channel: SimulationChannel = channel
 
+
+        self.prediction_sub_space = prediction_sub_space
         self.input_channels = input_channels
         self.output_channels = output_channels
         self.name = name
@@ -54,8 +62,8 @@ class GAN3D(ABC):
 
         self.device = torch.device("cuda")  # if we cannot get cuda, don't even try...
 
-        self.generator = self.get_generator(channel).to(self.device)
-        self.discriminator = self.get_discriminator(channel).to(self.device)
+        self.generator = self.get_generator(self.prediction_sub_space).to(self.device)
+        self.discriminator = self.get_discriminator(self.prediction_sub_space).to(self.device)
         self.generator_loss = generator_loss
         self.discriminator_loss = discriminator_loss
 
