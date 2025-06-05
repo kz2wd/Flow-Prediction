@@ -1,2 +1,2 @@
 #!/bin/bash
-rsync -avz --delete --exclude='.git/' --exclude='__pycache__/' --include='scripts/***' --include='main.py' --include='web-grapher.py' --include='dash_background.py' --include='space_exploration/***' --include='visualization/***' --exclude='*' ./ lab:~/code/sync
+rsync -avz --delete --exclude='.git/' --exclude='__pycache__/' --include='scripts/***' --include='main.py' --include='web-grapher.py' --include='dask_background.py' --include='space_exploration/***' --include='visualization/***' --exclude='*' ./ lab:~/code/sync
