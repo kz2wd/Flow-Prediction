@@ -21,4 +21,4 @@ if __name__ == '__main__':
 
     dataset = Dataset.get_dataset_or_fail(session, target_dataset)
 
-    dataset.create_benchmark()
+    dataset.benchmark.compute()

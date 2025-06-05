@@ -17,6 +17,9 @@ import dash_bootstrap_components as dbc
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MORPH])
 
+def get_datasets():
+    return [ds for ds in db_access.get_session().query(Dataset).all() if ds.benchmark.loaded]
+
 app.layout = html.Div([
     html.H1("Research Visualization Tool"),
 
@@ -25,7 +28,7 @@ app.layout = html.Div([
     html.Label("Select Datasets:"),
     dcc.Dropdown(
         id="dataset-dropdown",
-        options=[{"label": ds.name, "value": ds.id} for ds in session.query(Dataset).filter(Dataset.benchmark_df is not None)],
+        options=[{"label": ds.name, "value": ds.id} for ds in get_datasets() ],
         multi=True
     ),
 

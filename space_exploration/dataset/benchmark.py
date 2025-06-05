@@ -21,12 +21,14 @@ class Benchmark:
     COMPONENT_DF = "component"
     def __init__(self, dataset: 'Dataset'):
         self.dataset = dataset
+        self.loaded = False
 
 
     def load(self):
-        self.base_df = s3_access.get_ds(self.get_benchmark_storage_name(self.BASE_DF))
-        self.channel_df = s3_access.get_ds(self.get_benchmark_storage_name(self.CHANNEL_DF))
-        self.component_df = s3_access.get_ds(self.get_benchmark_storage_name(self.COMPONENT_DF))
+        self.base_df = s3_access.load_df(self.get_benchmark_storage_name(self.BASE_DF))
+        self.channel_df = s3_access.load_df(self.get_benchmark_storage_name(self.CHANNEL_DF))
+        self.component_df = s3_access.load_df(self.get_benchmark_storage_name(self.COMPONENT_DF))
+        self.loaded = self.base_df is not None and self.channel_df is not None and self.component_df is not None
 
     def compute(self):
         print("Computing Benchmark Data")
@@ -69,7 +71,7 @@ class Benchmark:
 
         component_dict = {
             'component': np.repeat(components, y_size),
-
+            'y_dimension': np.tile(y_dimension, len(components)),
             'velocity_mean': velocity_mean.flatten(),
             'velocity_std': velocity_std.flatten(),
             'squared_velocity_mean': squared_velocity_mean.flatten(),

@@ -66,7 +66,9 @@ class Dataset(Base):
 
     @functools.cached_property
     def benchmark(self):
-        return Benchmark(self)
+        benchmark = Benchmark(self)
+        benchmark.load()
+        return benchmark
 
     def reload_benchmark(self):
         self.__dict__.pop('benchmark', None)
