@@ -20,11 +20,8 @@ from space_exploration.simulation_channel.PredictionSubSpace import PredictionSu
 from visualization.saving_file_names import *
 
 
-# Generator loss: content + adversarial
 def generator_loss(fake_y, y_pred, y_true):
-    # Cast BCE inputs to float32
-    fake_y = fake_y.float()
-    adversarial_labels = (torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2).float()
+    adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
     adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
 
     content_loss = F.mse_loss(y_pred, y_true, reduction='none').mean(dim=(1, 2, 3, 4))
@@ -32,13 +29,9 @@ def generator_loss(fake_y, y_pred, y_true):
     total_loss = content_loss + 1e-3 * adversarial_loss
     return total_loss.mean()
 
-# Discriminator loss: real + fake discrimination
 def discriminator_loss(real_y, fake_y):
-    # Cast BCE inputs to float32
-    real_y = real_y.float()
-    fake_y = fake_y.float()
-    real_labels = (torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2).float()
-    fake_labels = (torch.rand_like(fake_y) * 0.2).float()
+    real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
+    fake_labels = torch.rand_like(fake_y) * 0.2
 
     real_loss = F.binary_cross_entropy(real_y, real_labels, reduction='none')
     fake_loss = F.binary_cross_entropy(fake_y, fake_labels, reduction='none')
