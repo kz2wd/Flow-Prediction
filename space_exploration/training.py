@@ -88,6 +88,7 @@ def train_gan(model, dataset_train, dataset_valid, max_epochs=50, patience=7, sa
 
             model.generator_optimizer.zero_grad()
             gen_loss.backward()
+            model.generator_optimizer.step()
 
             # === Discriminator forward and loss ===
             real_output = model.discriminator(y_target)
@@ -96,6 +97,7 @@ def train_gan(model, dataset_train, dataset_valid, max_epochs=50, patience=7, sa
 
             model.discriminator_optimizer.zero_grad()
             disc_loss.backward()
+            model.discriminator_optimizer.step()
 
             gen_losses.append(gen_loss.item())
             disc_losses.append(disc_loss.item())

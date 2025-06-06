@@ -1,43 +1,33 @@
-import time
 from abc import ABC, abstractmethod
-
-import h5py
-import mlflow
-import numpy as np
-import tqdm
-import vtk
-from torch.utils.data import DataLoader, random_split
-from vtk.util import numpy_support
 
 import torch
 import torch.nn.functional as F
 
 from space_exploration.FolderManager import FolderManager
-from space_exploration.data_viz.PlotData import PlotData, save_benchmarks
-from space_exploration.models.dataset import HDF5Dataset
 from space_exploration.simulation_channel import SimulationChannel
 from space_exploration.simulation_channel.PredictionSubSpace import PredictionSubSpace
-from visualization.saving_file_names import *
 
 
 def generator_loss(fake_y, y_pred, y_true):
     adversarial_labels = torch.ones_like(fake_y) - torch.rand_like(fake_y) * 0.2
-    adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='none')
+    adversarial_loss = F.binary_cross_entropy(fake_y, adversarial_labels, reduction='mean')
 
-    content_loss = F.mse_loss(y_pred, y_true, reduction='none').mean(dim=(1, 2, 3, 4))
+    content_loss = F.mse_loss(y_pred, y_true, reduction='mean')
 
     total_loss = content_loss + 1e-3 * adversarial_loss
-    return total_loss.mean()
+    # print(f"fake y mean: {fake_y.mean().item()}, y pred mean: {y_pred.mean().item()}, y true mean: {y_true.mean().item()}")
+    # print(f"Content loss: {content_loss}, adversarial loss: {adversarial_loss}, total loss {total_loss}")
+    return total_loss
 
 def discriminator_loss(real_y, fake_y):
     real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
     fake_labels = torch.rand_like(fake_y) * 0.2
 
-    real_loss = F.binary_cross_entropy(real_y, real_labels, reduction='none')
-    fake_loss = F.binary_cross_entropy(fake_y, fake_labels, reduction='none')
+    real_loss = F.binary_cross_entropy(real_y, real_labels, reduction='mean')
+    fake_loss = F.binary_cross_entropy(fake_y, fake_labels, reduction='mean')
 
     total_loss = 0.5 * (real_loss + fake_loss)
-    return total_loss.mean()
+    return total_loss
 
 class GAN3D(ABC):
     def __init__(self, name, prediction_sub_space: PredictionSubSpace,

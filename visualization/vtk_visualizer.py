@@ -32,9 +32,12 @@ def load_grid_with_magnitude(file, magnitude_name):
 
 target_model = "A03"
 # Step 1: Load both datasets with magnitude
-grid_target = load_grid_with_magnitude(FolderManager.FolderManager._generated_data / target_model / TARGET_FILE_NAME, "mag_target")
-grid_predict = load_grid_with_magnitude(
-    FolderManager.FolderManager._generated_data / target_model / PREDICTION_FILE_NAME, "mag_predict")
+# grid_target = load_grid_with_magnitude(FolderManager.FolderManager._generated_data / target_model / TARGET_FILE_NAME, "mag_target")
+
+grid_target = load_grid_with_magnitude("frame_0.vts", "mag_target")
+
+# grid_predict = load_grid_with_magnitude(
+#     FolderManager.FolderManager._generated_data / target_model / PREDICTION_FILE_NAME, "mag_predict")
 
 # Step 2: Copy both magnitude arrays into one dataset
 # We'll use the geometry and topology of `grid_target`
@@ -42,17 +45,17 @@ merged_grid = vtk.vtkStructuredGrid()
 merged_grid.DeepCopy(grid_target)
 
 # Add the other magnitude array (from grid_predict) to it
-mag_predict_array = grid_predict.GetPointData().GetArray("mag_predict")
-merged_grid.GetPointData().AddArray(mag_predict_array)
+# mag_predict_array = grid_predict.GetPointData().GetArray("mag_predict")
+# merged_grid.GetPointData().AddArray(mag_predict_array)
 
 # Step 3: Compute absolute difference using calculator
-diff_calc = vtk.vtkArrayCalculator()
-diff_calc.SetInputData(merged_grid)
-diff_calc.AddScalarArrayName("mag_target")
-diff_calc.AddScalarArrayName("mag_predict")
-diff_calc.SetFunction("abs(mag_target - mag_predict)")
-diff_calc.SetResultArrayName("mag_diff")
-diff_calc.Update()
+# diff_calc = vtk.vtkArrayCalculator()
+# diff_calc.SetInputData(merged_grid)
+# diff_calc.AddScalarArrayName("mag_target")
+# diff_calc.AddScalarArrayName("mag_predict")
+# diff_calc.SetFunction("abs(mag_target - mag_predict)")
+# diff_calc.SetResultArrayName("mag_diff")
+# diff_calc.Update()
 
 def create_volume_actor(input_data):
     resampler = vtk.vtkResampleToImage()
@@ -76,13 +79,13 @@ def create_volume_actor(input_data):
     if isinstance(input_data, vtkStructuredGrid):
 
         color.AddHSVPoint(0.0, 0.8, 1.0, 1.0)
-        color.AddHSVPoint(1.5, 0.667, 1.0, 1.0)  # Blue
-        color.AddHSVPoint(3.0, 0.333, 1.0, 1.0)  # Green
-        color.AddHSVPoint(5.0, 0.0, 1.0, 1.0)   # Red
+        color.AddHSVPoint(0.2, 0.667, 1.0, 1.0)  # Blue
+        color.AddHSVPoint(0.5, 0.333, 1.0, 1.0)  # Green
+        color.AddHSVPoint(1, 0.0, 1.0, 1.0)   # Red
 
         opacity.AddPoint(0.0, 0.4)
-        opacity.AddPoint(1.0, 0.6)
-        opacity.AddPoint(5.0, 0.95)
+        opacity.AddPoint(0.5, 0.6)
+        opacity.AddPoint(1, 0.95)
 
     else:
         color.AddHSVPoint(0.0, 0.667, 1.0, 1.0)  # Blue
@@ -106,8 +109,8 @@ def create_volume_actor(input_data):
 
 # Create volume actors
 volume_target = create_volume_actor(grid_target)
-volume_predict = create_volume_actor(grid_predict)
-volume_diff = create_volume_actor(diff_calc)
+# volume_predict = create_volume_actor(grid_predict)
+# volume_diff = create_volume_actor(diff_calc)
 
 
 
@@ -185,10 +188,12 @@ class VolumeVisu:
         # Add to renderer
         self.renderer.AddActor(outline_actor)
 
-# Create renderers
-volumes = [VolumeVisu("Target magnitude", "Velocity magnitude", grid_target),
-           VolumeVisu("Prediction magnitude", "Velocity magnitude", grid_predict),
-           VolumeVisu("Prediction error", "Error", diff_calc),]
+# # Create renderers
+# volumes = [VolumeVisu("Target magnitude", "Velocity magnitude", grid_target),
+#            VolumeVisu("Prediction magnitude", "Velocity magnitude", grid_predict),
+#            VolumeVisu("Prediction error", "Error", diff_calc),]
+
+volumes = [VolumeVisu("Target magnitude", "Velocity magnitude", grid_target)]
 
 
 shared_camera = vtk.vtkCamera()
@@ -197,7 +202,7 @@ for i, volume in enumerate(volumes):
     volume.add_title()
     volume.add_scalar_bar()
     volume.add_outline()
-    volume.renderer.SetViewport(i / 3.0, 0.0, (i + 1) / 3.0, 1.0)
+    # volume.renderer.SetViewport(i / 3.0, 0.0, (i + 1) / 3.0, 1.0)
     volume.renderer.SetActiveCamera(shared_camera)
     render_window.AddRenderer(volume.renderer)
 

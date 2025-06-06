@@ -19,6 +19,7 @@ class FolderManager:
     tfrecords = Path(FOLDER_PREFIX) / "tfrecords"
     dataset = Path(FOLDER_PREFIX) / "dataset"
     _artifacts = Path(FOLDER_PREFIX) / "artifacts"
+    _vts_frames = Path(FOLDER_PREFIX) / "vts_frames"
 
     @staticmethod
     def init(model: 'GAN3D'):
@@ -51,3 +52,9 @@ class FolderManager:
     @staticmethod
     def artifact_backup_folder(model):
         return FolderManager._artifacts / (model if isinstance(model, str) else model.name)
+
+    @staticmethod
+    def vts_frames_folder(dataset):
+        f = FolderManager._vts_frames / (dataset if isinstance(dataset, str) else dataset.name)
+        f.mkdir(parents=True, exist_ok=True)
+        return f
