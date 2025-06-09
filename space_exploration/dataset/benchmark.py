@@ -34,7 +34,7 @@ class Benchmark:
         print("Computing Benchmark Data")
 
         # ds shape: (Batch, velocity component, x, y, z)
-        ds = self.dataset.load_s3() * self.dataset.scaling
+        ds = self.dataset.y * self.dataset.scaling
 
         y_start = 1 if self.dataset.channel.discard_first_y else 0
         y_dimension = self.dataset.channel.get_simulation_channel().y_dimension
@@ -144,7 +144,3 @@ def prediction_difficulty(ds, n_clusters=10):
         "avg_variance_per_cluster": np.mean(per_cluster_var),
         "max_variance_per_cluster": np.max(per_cluster_var),
     }
-
-
-def benchmark_dataset(ds):
-    print("Im old...")

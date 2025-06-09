@@ -5,10 +5,9 @@ from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.beans.dataset_stat_bean import DatasetStat
 
 
-def add_dataset(session, name, s3_storage_name, channel, scaling, stats):
+def add_dataset(session, name, channel, scaling, stats):
     dataset = Dataset(
         name=name,
-        s3_storage_name=s3_storage_name,
         scaling=scaling,
         channel=channel,
     )

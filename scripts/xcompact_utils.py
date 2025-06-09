@@ -31,8 +31,9 @@ def load_snapshot(snapshot_index, dims, folder):
     for comp in ['ux', 'uy', 'uz']:
         filename = folder / f"{comp}-{snapshot_index}.bin"
         data = np.fromfile(filename, dtype=np.float64).reshape(shape, order='F')
+        data = np.float32(data) # Convert to f32
         components.append(data)
-    return np.stack(components, axis=0)  # Shape: [3, nx, ny, nz]
+    return None, np.stack(components, axis=0)  # Shape: [3, nx, ny, nz]
 
 def get_ids(folder: Path):
     matching_ids = set()
@@ -44,19 +45,20 @@ def get_ids(folder: Path):
             matching_ids.add(file_id)
     return sorted(list(matching_ids))
 
-def get_snapshot_ds(simulation_folder: Path):
+def get_snapshot_xy(simulation_folder: Path):
     folder = simulation_folder / "data"
     indices = get_ids(folder)
     dims = get_shape_from_xdmf(folder, indices[0])
     nx, ny, nz = dims[::-1]
 
-    delayed_arrays = []
+    y_das = []
     for idx in tqdm.tqdm(indices):
-        arr = delayed(load_snapshot)(idx, dims, folder)
-        darr = da.from_delayed(arr, shape=(3, nx, ny, nz), dtype=np.float64)
-        delayed_arrays.append(darr)
+        x, y = delayed(load_snapshot)(idx, dims, folder)
+        y_da = da.from_delayed(y, shape=(3, nx, ny, nz), dtype=np.float64)
+        y_das.append(y_da)
 
-    return da.stack(delayed_arrays, axis=0)  # Shape: [N, 3, nx, ny, nz]
+    y = da.stack(y_das, axis=0)  # Shape: [N, 3, nx, ny, nz]
+    return None, y
 
 
 def build_export_metadata(session, ds, s3_file_name, dataset_name, scaling, channel):

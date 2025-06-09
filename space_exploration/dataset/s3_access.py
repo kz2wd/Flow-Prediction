@@ -1,6 +1,7 @@
 import dask.array as da
 import pyarrow.parquet as pq
 import s3fs
+import zarr
 
 # Set it in ~/.aws/credentials:
 """
@@ -25,6 +26,32 @@ def get_ds(file_path):
 def store_ds(ds, file_path):
     store = get_s3_map(file_path)
     ds.to_zarr(store, overwrite=True)
+
+
+def store_xy(x, y, file_path):
+    store = get_s3_map(file_path)
+
+    x.to_zarr(
+        store,
+        component='X',
+        overwrite=True,
+    )
+
+    y.to_zarr(
+        store,
+        component='Y',
+        overwrite=True,
+    )
+
+
+def get_x(file_path):
+    store = get_s3_map(file_path)
+    return da.from_zarr(store, component='X')
+
+
+def get_y(file_path):
+    store = get_s3_map(file_path)
+    return da.from_zarr(store, component='Y')
 
 
 def store_df(df, file_path):

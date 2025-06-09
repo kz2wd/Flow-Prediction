@@ -6,15 +6,15 @@ from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
 
 
 class S3Dataset(Dataset):
-    def __init__(self, ds, max_y, normalizer: NormalizerBase):
+    def __init__(self, x_ds, y_ds, max_y, normalizer: NormalizerBase):
 
-        self.ds = normalizer.normalize(ds)
+        self.y_ds = normalizer.normalize(y_ds)
         print("⌛ Initializing Dataset...")
         with ProgressBar():
-            self.ds = self.ds.compute()
+            self.y_ds = self.y_ds.compute()
 
-        self.x = self.ds[..., :, :, :1, :]  # [B, 3, x, 1, z]
-        self.y = self.ds[..., :, :, :max_y, :]  # [B, 3, x, y, z]
+        self.x = x_ds.compute()
+        self.y = self.y_ds[..., :, :, :max_y, :]  # [B, 3, x, y, z]
 
     def __len__(self):
         return len(self.x)

@@ -42,7 +42,6 @@ class Generator(nn.Module):
         x = x + up_samp
         x = self.conv2(x)
         x = self.output_conv(x)
-        x = torch.sigmoid(x)
         return x
 
 class C(PaperBase):

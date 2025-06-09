@@ -1,40 +1,46 @@
 import functools
-from functools import lru_cache, cache
 
-import dask.array as da
 import numpy as np
-from sqlalchemy import create_engine, Column, String, Float, DateTime, Boolean, Integer, ForeignKey
-
+import vtk
+from sqlalchemy import Column, String, Float, Integer, ForeignKey
 from sqlalchemy.orm import relationship, Mapped
+from vtk.util import numpy_support
 
 from space_exploration.FolderManager import FolderManager
 from space_exploration.beans.alchemy_base import Base
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
-from space_exploration.dataset.benchmark import benchmark_dataset, Benchmark
+from space_exploration.dataset.benchmark import Benchmark
 from space_exploration.dataset.dataset_stat import DatasetStats
 from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
-from space_exploration.dataset.s3_access import load_df, exist
 from space_exploration.dataset.s3_dataset import S3Dataset
-from space_exploration.simulation_channel.SimulationChannel import SimulationChannel
-
-import vtk
-from vtk.util import numpy_support
 
 
 class Dataset(Base):
     __tablename__ = 'datasets'
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
-    s3_storage_name = Column(String, unique=True)
     scaling = Column(Float)
     stats = relationship("DatasetStat", back_populates="dataset", cascade="all, delete-orphan")
     channel_id = Column(Integer, ForeignKey('channels.id'))
     channel: Mapped[Channel] = relationship("Channel")
 
-    def load_s3(self):
-        return s3_access.get_ds(self.s3_storage_name)
+    @property
+    def ds_s3_storage(self):
+        return f"simulations/{self.name}.zarr"
+
+    @functools.cached_property
+    def x(self):
+        return s3_access.get_x(self.ds_s3_storage)
+
+    @functools.cached_property
+    def y(self):
+        return s3_access.get_y(self.ds_s3_storage)
+
+    def reload_ds(self):
+        self.__dict__.pop('x', None)
+        self.__dict__.pop('y', None)
 
     def get_stats(self):
         u_means = []
@@ -52,20 +58,15 @@ class Dataset(Base):
             w_stds.append(stat.w_std)
         return DatasetStats(np.array(u_means), np.array(v_means), np.array(w_means), np.array(u_stds), np.array(v_stds), np.array(w_stds))
 
-    @functools.cached_property
     def size(self):
-        return self.load_s3().shape[0]
-
-    def create_benchmark(self):
-        benchmark_dataset(self)
+        return self.x.shape[0]
 
     def get_training_dataset(self, normalizer: NormalizerBase, max_y, size=-1):
-        ds = self.load_s3()[:size]
-        s3 = S3Dataset(ds, max_y, normalizer)
+        s3 = S3Dataset(self.x[:size], self.y[:size], max_y, normalizer)
         return s3
 
     def get_dataset_analyzer(self):
-        return DatasetAnalyzer(self.load_s3(), self.scaling, self.channel.get_simulation_channel())
+        return DatasetAnalyzer(self.y, self.scaling, self.channel.get_simulation_channel())
 
     @functools.cached_property
     def benchmark(self):
@@ -74,11 +75,12 @@ class Dataset(Base):
         return benchmark
 
     def reload_benchmark(self):
+        self.reload_ds()
         self.__dict__.pop('benchmark', None)
 
     def export_frame_vts(self, frame, array_name="velocity_target"):
 
-        target = self.load_s3()[frame].compute()
+        target = self.y[frame].compute()
 
         y_len = target.shape[2]
 

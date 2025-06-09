@@ -35,9 +35,9 @@ if __name__ == "__main__":
         channel = xc_utils.add_channel_from_simulation(session, simulation_folder, args.channel_name, args.channel_scale, args.i3d_input_file)
         print(f"✅ Created new channel [{args.channel_name}]")
 
-    ds = xc_utils.get_snapshot_ds(simulation_folder)
+    x, y = xc_utils.get_snapshot_xy(simulation_folder)
 
-    print(f"Prepared dataset of shape {ds.shape}")
+    print(f"Prepared dataset of shape {y.shape}")
     done = False
     while not done:
         user_in = input("Input new Y shape:")
@@ -49,15 +49,15 @@ if __name__ == "__main__":
 
     print(f"Shrinking y to {y_lim}")
 
-    ds = ds[..., :y_lim, :]
-    print(f"New shape {ds.shape}")
+    y = y[..., :y_lim, :]
+    print(f"New shape {y.shape}")
 
     print("Building & Uploading dataset to S3 bucket")
     with ProgressBar():
-        s3_access.store_ds(ds, args.s3_storage_name)
+        s3_access.store_xy(x, y, args.s3_storage_name)
 
     print("Exporting metadata to SQL database")
-    xc_utils.build_export_metadata(session, ds, args.s3_storage_name, args.dataset_name, args.dataset_scaling, channel)
+    xc_utils.build_export_metadata(session, y, args.s3_storage_name, args.dataset_name, args.dataset_scaling, channel)
 
     input("Press [ENTER] to commit changes")
     session.commit()
