@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 
+import mlflow
 import torch
 import torch.nn.functional as F
 
@@ -58,4 +60,19 @@ class GAN3D(ABC):
     @abstractmethod
     def get_discriminator(self, channel: SimulationChannel):
         pass
+
+    def load(self, run_id):
+        mlflow.set_tracking_uri("http://localhost:5000")
+        checkpoint_path = "final_model/checkpoint_latest.pt"
+
+        print(f"⌛ Fecthing artifact at {str(checkpoint_path)}")
+
+        local_model_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path=str(checkpoint_path))
+
+        state_dict = torch.load(local_model_path, map_location="cuda")["generator_state_dict"]
+        self.generator.load_state_dict(state_dict)
+        self.generator.eval()
+        self.generator.to(self.device)
+
+        print(f"✅ Loaded generator from run {run_id}")
 

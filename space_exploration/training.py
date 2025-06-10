@@ -208,3 +208,10 @@ def test_gan(model, dataset_test, log_mlflow=True):
     if log_mlflow:
         mlflow.log_metric("test_mse", float(mean_mse))
     return mean_mse
+
+
+def gen_output(model, x):
+    with torch.no_grad():
+        x = x.to(model.device)
+        y = model.generator(x)
+    return y
