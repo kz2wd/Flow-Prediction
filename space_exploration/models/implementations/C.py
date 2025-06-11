@@ -33,6 +33,7 @@ class Generator(nn.Module):
         self.conv2 = nn.Conv3d(64, 256, kernel_size=3, stride=1, padding=1)
 
         self.output_conv = nn.Conv3d(256, output_channels, kernel_size=9, stride=1, padding=4)
+        self.final_activation = nn.Tanh()
 
     def forward(self, x):
         x = self.initial(x)
@@ -42,6 +43,7 @@ class Generator(nn.Module):
         x = x + up_samp
         x = self.conv2(x)
         x = self.output_conv(x)
+        # x = self.final_activation(x) * 10
         return x
 
 class C(PaperBase):

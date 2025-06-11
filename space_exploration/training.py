@@ -51,15 +51,15 @@ def get_split_datasets(dataset, batch_size=32, val_ratio=0.1, test_ratio=0.1, nu
 
     return train_loader, val_loader, test_loader
 
-def train_gan(model, dataset_train, dataset_valid, max_epochs=50, patience=7, saving_freq=5):
+def train_gan(model, dataset_train, dataset_valid, max_epochs=50, patience=4, saving_freq=5):
     mlflow.set_tracking_uri("http://localhost:5000")
     device = model.device
 
     # === OPTIMIZERS AND LR SCHEDULERS ===
-    model.generator_optimizer = torch.optim.Adam(model.generator.parameters(), lr=1e-3)
-    model.discriminator_optimizer = torch.optim.Adam(model.discriminator.parameters(), lr=1e-3)
+    model.generator_optimizer = torch.optim.Adam(model.generator.parameters(), lr=1e-4)
+    model.discriminator_optimizer = torch.optim.Adam(model.discriminator.parameters(), lr=1e-4)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        model.generator_optimizer, mode='min', factor=0.5, patience=3
+        model.generator_optimizer, mode='min', factor=0.5, patience=2
     )
 
     # === EARLY STOPPING SETUP ===
@@ -101,6 +101,12 @@ def train_gan(model, dataset_train, dataset_valid, max_epochs=50, patience=7, sa
 
             gen_losses.append(gen_loss.item())
             disc_losses.append(disc_loss.item())
+
+            if torch.isnan(y_pred).any() or torch.isinf(y_pred).any():
+                print("NaN or Inf detected in generator output!")
+            # print("Generator output stats:", y_pred.min().item(), y_pred.max().item(), y_pred.mean().item(),
+            #       y_pred.std().item())
+            # print("target stats:", y_target.min().item(), y_target.max().item(), y_target.mean().item(), y_target.std().item())
 
         return np.mean(gen_losses), np.mean(disc_losses)
 

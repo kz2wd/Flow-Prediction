@@ -21,6 +21,8 @@ def generator_loss(fake_y, y_pred, y_true):
     # print(f"Content loss: {content_loss}, adversarial loss: {adversarial_loss}, total loss {total_loss}")
     return total_loss
 
+
+
 def discriminator_loss(real_y, fake_y):
     real_labels = torch.ones_like(real_y) - torch.rand_like(real_y) * 0.2
     fake_labels = torch.rand_like(fake_y) * 0.2
