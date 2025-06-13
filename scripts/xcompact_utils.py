@@ -52,12 +52,16 @@ def get_snapshot_xy(simulation_folder: Path):
     nx, ny, nz = dims[::-1]
 
     y_das = []
+    x_das = []
     for idx in tqdm.tqdm(indices):
         x, y = delayed(load_snapshot)(idx, dims, folder)
-        y_da = da.from_delayed(y, shape=(3, nx, ny, nz), dtype=np.float64)
+        y_da = da.from_delayed(y, shape=(3, nx, ny, nz))
         y_das.append(y_da)
+        x_da = da.from_delayed(x, shape=(3, nx, 1, nz))
+        x_das.append(x)
 
     y = da.stack(y_das, axis=0)  # Shape: [N, 3, nx, ny, nz]
+    x = da.stack(x_das, axis=0)  # Shape: [N, 3, nx, 1,  nz]
     return None, y
 
 
