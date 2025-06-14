@@ -11,7 +11,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--simulation-path", required=True, type=dir_path)
-    parser.add_argument("--s3-dataset", required=True, type=str)
     parser.add_argument("--dataset-name", required=True, type=str)
     parser.add_argument("--scaling", required=True, type=float)
     parser.add_argument("--existing-channel-name", required=True, type=str)
@@ -21,7 +20,7 @@ if __name__ == "__main__":
     channel = Channel.get_channel_or_fail(session, args.existing_channel_name)
 
     ds = get_ds(args.s3_dataset)
-    build_export_metadata(session, ds, args.s3_dataset, args.dataset_name, args.scaling, channel)
+    build_export_metadata(session, ds, args.dataset_name, args.scaling, channel)
 
     session.commit()
 

@@ -15,7 +15,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--simulation-folder", required=True, type=dir_path, help="Folder containing the simulation")
-    parser.add_argument("--s3-storage-name", required=True, type=str, help="Name of the s3 storage, looks like bucket/dataset.zarr -> simulations/XXX.zarr")
     parser.add_argument("--dataset-name", required=True, type=str, help="the name of the dataset for it to be fetched from the code")
     parser.add_argument("--dataset-scaling", default=20, type=float, help="Arbitrary scaling value for the dataset, in the paper it was 100 / 3")
     parser.add_argument("--channel-name", required=True, type=str, help="Name of the channel that the dataset is in, will try to to find existing match, otherwise, will create a new one, check channel scale & input file")
@@ -50,14 +49,14 @@ if __name__ == "__main__":
     print(f"Shrinking y to {y_lim}")
 
     y = y[..., :y_lim, :]
-    print(f"New shape {y.shape}")
+    print(f"New shape y: {y.shape}, x: {x.shape}")
 
     print("Building & Uploading dataset to S3 bucket")
     with ProgressBar():
-        s3_access.store_xy(x, y, args.s3_storage_name)
+        s3_access.store_xy(x, y, f"simulations/{args.dataset_name}.zarr")
 
     print("Exporting metadata to SQL database")
-    xc_utils.build_export_metadata(session, y, args.s3_storage_name, args.dataset_name, args.dataset_scaling, channel)
+    xc_utils.build_export_metadata(session, y, args.dataset_name, args.dataset_scaling, channel)
 
     input("Press [ENTER] to commit changes")
     session.commit()
