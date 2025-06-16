@@ -19,11 +19,13 @@ def y_along_component_denormalize(ds, stats):
 
 def y_along_component_normalize(ds, stats):
     components = [0, 1, 2]  # channel indices: u, v, w
-    stds = [stats.u_stds, stats.v_stds, stats.w_stds]
-    means = [stats.u_means, stats.v_means, stats.w_means]
+    # stds = [stats.u_stds, stats.v_stds, stats.w_stds]
+    # means = [stats.u_means, stats.v_means, stats.w_means]
 
-    print("stds:",)
 
+
+    means = ds.mean(axis=(0, 2, 4)).compute()
+    stds = ds.mean(axis=(0, 2, 4)).compute()
 
     norm_components = []
     for c, std, mean in zip(components, stds, means):
