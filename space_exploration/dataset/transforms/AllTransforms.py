@@ -1,4 +1,6 @@
 from enum import Enum
+
+from space_exploration.dataset.transforms.general.component_normalize import ComponentNormalize
 from space_exploration.dataset.transforms.general.default_unchanged import DefaultUnchanged
 from space_exploration.dataset.transforms.y_only.y_along_component_normalizer import YAlongComponentNormalizer
 
@@ -16,3 +18,4 @@ class TransformationEnumBase(str, Enum):
 class TransformationReferences(TransformationEnumBase):
     DEFAULT_UNCHANGED = ("DEFAULT_UNCHANGED", DefaultUnchanged)
     Y_ALONG_COMPONENT_NORMALIZE = ("Y_ALONG_COMPONENT_NORMALIZE", YAlongComponentNormalizer)
+    COMPONENT_NORMALIZE = ("COMPONENT_NORMALIZE", ComponentNormalize)

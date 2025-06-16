@@ -22,13 +22,14 @@ def y_along_component_normalize(ds, stats):
     # stds = [stats.u_stds, stats.v_stds, stats.w_stds]
     # means = [stats.u_means, stats.v_means, stats.w_means]
 
+    sample_size = 100
 
-
-    means = ds.mean(axis=(0, 2, 4)).compute()
-    stds = ds.mean(axis=(0, 2, 4)).compute()
+    means = ds[sample_size:].mean(axis=(0, 2, 4)).compute()
+    stds = ds[sample_size:].std(axis=(0, 2, 4)).compute()
 
     norm_components = []
     for c, std, mean in zip(components, stds, means):
+        std = da.where(std == 0, 1e-8, std).compute()
         std = std[None, None, :, None]  # Casting into correct shape
         mean = mean[None, None, :, None]
         component = (ds[:, c, :, :, :] - mean) / std
