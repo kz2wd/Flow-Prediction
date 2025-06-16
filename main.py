@@ -14,7 +14,7 @@ def launch_training(model_ref, dataset_name, x_transform_ref, y_transform_ref):
 
     model_ds = dataset.get_training_dataset(y_dim, x_transform_ref.transformation, y_transform_ref.transformation)
 
-    train_ds, val_ds, _ = get_split_datasets(model_ds, batch_size=8, val_ratio=0.1, test_ratio=0.0,
+    train_ds, val_ds, _ = get_split_datasets(model_ds, batch_size=4, val_ratio=0.1, test_ratio=0.0,
                                                    device=model.device)
 
     train_gan(model, train_ds, val_ds)
@@ -24,7 +24,7 @@ def launch_training(model_ref, dataset_name, x_transform_ref, y_transform_ref):
 
 
 def test():
-    launch_training(ModelReferences.A, "re200-sr005etot", TransformationReferences.DEFAULT_UNCHANGED, TransformationReferences.DEFAULT_UNCHANGED)
+    launch_training(ModelReferences.A, "re200-sr005etot", TransformationReferences.COMPONENT_NORMALIZE, TransformationReferences.Y_ALONG_COMPONENT_NORMALIZE)
 
 
 if __name__ == '__main__':
