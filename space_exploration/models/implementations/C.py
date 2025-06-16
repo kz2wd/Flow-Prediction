@@ -47,8 +47,8 @@ class Generator(nn.Module):
         return x
 
 class C(PaperBase):
-    def __init__(self, name):
-        super().__init__(name, PredictionSubSpace(y_end=32))
+    def __init__(self):
+        super().__init__("C-32", PredictionSubSpace(y_end=32))
 
     def get_generator(self, prediction_sub_space: PredictionSubSpace):
         return Generator(prediction_sub_space)

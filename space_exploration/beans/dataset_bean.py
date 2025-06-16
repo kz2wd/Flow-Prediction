@@ -1,4 +1,5 @@
 import functools
+from typing import Type
 
 import numpy as np
 import vtk
@@ -13,7 +14,7 @@ from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
 from space_exploration.dataset.benchmark import Benchmark
 from space_exploration.dataset.dataset_stat import DatasetStats
-from space_exploration.dataset.normalize.normalizer_base import NormalizerBase
+from space_exploration.dataset.transforms.general.default_unchanged import DefaultUnchanged
 from space_exploration.dataset.s3_dataset import S3Dataset
 
 
@@ -61,8 +62,8 @@ class Dataset(Base):
     def size(self):
         return self.x.shape[0]
 
-    def get_training_dataset(self, normalizer: NormalizerBase, max_y, size=-1):
-        s3 = S3Dataset(self.x[:size], self.y[:size], max_y, normalizer)
+    def get_training_dataset(self, max_y, XTransform: Type = DefaultUnchanged, YTransform: Type = DefaultUnchanged, size=-1):
+        s3 = S3Dataset(self, self.x[:size], self.y[:size], max_y, XTransform, YTransform)
         return s3
 
     def get_dataset_analyzer(self):

@@ -22,6 +22,9 @@ def y_along_component_normalize(ds, stats):
     stds = [stats.u_stds, stats.v_stds, stats.w_stds]
     means = [stats.u_means, stats.v_means, stats.w_means]
 
+    print("stds:",)
+
+
     norm_components = []
     for c, std, mean in zip(components, stds, means):
         std = std[None, None, :, None]  # Casting into correct shape
