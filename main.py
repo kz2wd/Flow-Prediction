@@ -2,7 +2,7 @@ from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.dataset import db_access
 from space_exploration.dataset.transforms.AllTransforms import TransformationReferences
 from space_exploration.models.AllModels import ModelReferences
-from space_exploration.training import train_gan, get_split_datasets
+from space_exploration.training_utils import train_gan, get_split_datasets
 
 
 def launch_training(model_ref, dataset_name, x_transform_ref, y_transform_ref):

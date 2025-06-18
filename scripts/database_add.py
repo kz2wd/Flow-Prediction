@@ -1,3 +1,4 @@
+import mlflow
 
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.beans.channel_y_bean import ChannelY
@@ -6,6 +7,7 @@ from space_exploration.beans.dataset_stat_bean import DatasetStat
 from space_exploration.beans.training_bean import Training
 from space_exploration.dataset.transforms.AllTransforms import TransformationReferences
 from space_exploration.models.AllModels import ModelReferences
+from space_exploration.training_utils import train_gan, get_split_datasets
 
 
 def add_dataset(session, name, channel, scaling, stats):
@@ -46,20 +48,3 @@ def add_channel(session, name, x_resolution, x_length, y_dimension, z_resolution
 
     session.add(channel)
     return channel
-
-
-def try_add_training(session, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, name=None):
-
-    model_ref = ModelReferences(model_name)
-
-    model = model_ref.model
-
-    dataset = Dataset.get_dataset_or_fail(session, dataset_name)
-
-    x_transform_ref = TransformationReferences(x_transform_name)
-    y_transform_ref = TransformationReferences(y_transform_name)
-
-
-    training = Training(
-
-    )

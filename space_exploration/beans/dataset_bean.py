@@ -59,6 +59,7 @@ class Dataset(Base):
             w_stds.append(stat.w_std)
         return DatasetStats(np.array(u_means), np.array(v_means), np.array(w_means), np.array(u_stds), np.array(v_stds), np.array(w_stds))
 
+    @property
     def size(self):
         return self.x.shape[0]
 
