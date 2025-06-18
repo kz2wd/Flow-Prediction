@@ -11,6 +11,7 @@ from space_exploration.beans.channel_y_bean import ChannelY
 from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.beans.dataset_stat_bean import DatasetStat
 from space_exploration.beans.prediction_subspace_bean import PredictionSubSpace
+from space_exploration.beans.training_bean import Training
 
 creds_path = Path.home() / ".pg_creds.json"
 with open(creds_path) as f:
@@ -27,7 +28,7 @@ ChannelY()
 Dataset()
 DatasetStat()
 PredictionSubSpace()
-
+Training()
 
 engine = create_engine(get_db_url())
 Session = sessionmaker(bind=engine)
@@ -40,6 +41,8 @@ def get_session():
         Base.metadata.create_all(engine)
         table_init = True
     return Session()
+
+global_session = get_session()
 
 def get_full_base():
     return Base

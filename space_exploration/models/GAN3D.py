@@ -63,18 +63,20 @@ class GAN3D(ABC):
     def get_discriminator(self, channel: SimulationChannel):
         pass
 
-    def load(self, run_id):
-        mlflow.set_tracking_uri("http://localhost:5000")
-        checkpoint_path = "final_model/checkpoint_latest.pt"
+    def load(self, state_dict):
 
-        print(f"⌛ Fecthing artifact at {str(checkpoint_path)}")
+        self.generator.load_state_dict(state_dict["generator_state_dict"])
+        self.discriminator.load_state_dict(state_dict["discriminator_state_dict"])
+        self.discriminator.eval()
+        self.discriminator.to(self.device)
 
-        local_model_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path=str(checkpoint_path))
-
-        state_dict = torch.load(local_model_path, map_location="cuda")["generator_state_dict"]
-        self.generator.load_state_dict(state_dict)
         self.generator.eval()
         self.generator.to(self.device)
 
-        print(f"✅ Loaded generator from run {run_id}")
-
+    def custom_load(self, run_id, artifact_path):
+        mlflow.set_tracking_uri("http://localhost:5000")
+        print(f"⌛ Fetching remote artifact at {str(artifact_path)}")
+        local_model_path = mlflow.artifacts.download_artifacts(run_id=run_id,
+                                                               artifact_path=str(artifact_path))
+        state_dict = torch.load(local_model_path, map_location="cuda")
+        self.load(state_dict)

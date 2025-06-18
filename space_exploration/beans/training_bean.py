@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from space_exploration.beans.alchemy_base import Base
-from space_exploration.run_training import ModelTraining
 
 
 class Training(Base):
@@ -17,5 +16,12 @@ class Training(Base):
     y_transform = Column(String)
     run_id = Column(String)
 
-    def get_training(self, session):
-        model_training = ModelTraining(session)
+    @staticmethod
+    def get_training_or_fail(session, run_id):
+        result: Training | None = session.query(Training).filter_by(run_id=run_id).first()
+        if result is None:
+            print(f"Training [{run_id}] not found ❌")
+            print("Available Training:")
+            print(*(training.run_id for training in session.query(Training).all()))
+            raise Exception(f"Training [{run_id}] not found <UNK>")
+        return result

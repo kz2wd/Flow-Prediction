@@ -1,3 +1,4 @@
+import shutil
 import time
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from space_exploration.training_utils import get_split_datasets
 
 
 class ModelTraining:
-    def __init__(self, session, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None):
+    def __init__(self, session, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None, bean=None):
 
         self.train_patience = train_patience
         self.saving_freq = saving_freq
@@ -26,6 +27,8 @@ class ModelTraining:
         self.dataset_name = dataset_name
         self.model_name = model_name
         self.session = session
+
+        self.bean = bean
 
 
         self.model_ref = ModelReferences(model_name)
@@ -46,6 +49,12 @@ class ModelTraining:
         if self.name is None:
             self.name = f"{model_name}_{dataset_name}_{data_amount}_{batch_size}"
 
+        # === ARTIFACT MANAGEMENT ===
+        self.artifact_dir = Path(FolderManager.artifact_backup_folder(self.model))
+        self.artifact_dir.mkdir(parents=True, exist_ok=True)
+        self.latest_ckpt = self.artifact_dir / "checkpoint_latest.pt"
+        self.best_ckpt = self.artifact_dir / "checkpoint_best.pt"
+
     def run(self):
         mlflow.set_tracking_uri("http://localhost:5000")
         with mlflow.start_run(run_name=self.name):
@@ -58,12 +67,13 @@ class ModelTraining:
             try:
                 self._internal_train()
             except KeyboardInterrupt as e:
-                print(f"Stopping training due to user request")
+                print(f"🚩 Stopping training due to user request")
             except Exception as e:
                 print(f"Encountered exception while training: {e}")
 
             finally:
                 self._upload_best_model()
+                self._clean_training()
 
     def _prepare_train(self):
         y_dim = self.model.prediction_sub_space.y[1]
@@ -71,11 +81,11 @@ class ModelTraining:
         self.train_ds, self.val_ds, _ = get_split_datasets(ds, batch_size=4, val_ratio=0.1, test_ratio=0.0,
                                                  device=self.model.device)
 
-        # === ARTIFACT MANAGEMENT ===
-        artifact_dir = Path(FolderManager.artifact_backup_folder(self.model))
-        artifact_dir.mkdir(parents=True, exist_ok=True)
-        self.latest_ckpt = artifact_dir / "checkpoint_latest.pt"
-        self.best_ckpt = artifact_dir / "checkpoint_best.pt"
+
+
+    def _clean_training(self):
+        print(f"🔄️ Deleting local backups in [{self.artifact_dir}]")
+        shutil.rmtree(self.artifact_dir)
 
     def _train_one_epoch(self):
         self.model.generator.train()
@@ -142,7 +152,7 @@ class ModelTraining:
         }, ckpt)
 
     def _upload_best_model(self):
-        print("Uploading best model")
+        print("🕓 Uploading best model")
         mlflow.log_artifact(str(self.best_ckpt), artifact_path="final_model")
 
     def _internal_train(self):
@@ -217,3 +227,26 @@ class ModelTraining:
         )
         self.session.add(training)
         self.session.commit()
+
+        self.bean = training
+
+
+    def load_model(self):
+        if self.bean is None:
+            raise Exception("No existing training record!")
+
+        state_dict_path = f"final_model/{self.best_ckpt}"
+
+        print(f"⌛ Fetching remote artifact at {str(state_dict_path)}")
+
+        local_model_path = mlflow.artifacts.download_artifacts(run_id=self.bean.run_id, artifact_path=str(state_dict_path))
+        state_dict = torch.load(local_model_path, map_location="cuda")
+
+        self.model.load(state_dict)
+        print(f"✅ Successfully loaded model")
+
+    @staticmethod
+    def from_training_bean(bean: Training):
+        model_training = ModelTraining(bean.model, bean.dataset.name, bean.x_transform, bean.y_transform,
+                                       bean.batch_size, bean.data_amount, bean=bean)
+        return model_training

@@ -124,6 +124,6 @@ class Dataset(Base):
             print(f"Dataset [{name}] not found ❌")
             print("Available datasets:")
             print(*(dataset.name for dataset in session.query(Dataset).all()))
-            exit(1)
+            raise Exception(f"Dataset [{name}] not found <UNK>")
         return result
 
