@@ -69,6 +69,19 @@ def test_gan(model, dataset_test, log_mlflow=True):
     return mean_mse
 
 
+def get_prediction_ds(model, dataset):
+    model.generator.eval()
+
+    predictions = []
+    with torch.no_grad():
+        for x_target, y_target in tqdm.tqdm(dataset, desc="Testing"):
+            x_target, y_target = x_target.to(model.device), y_target.to(model.device)
+            y_pred = model.generator(x_target)
+            predictions.append(y_pred.cpu().numpy())
+
+    return np.concatenate(predictions, axis=0)
+
+
 def gen_output(model, x):
     with torch.no_grad():
         x = x.to(model.device)
