@@ -14,9 +14,8 @@ if __name__ == '__main__':
     arg_parser.add_argument("--channel", required=True)
     args = arg_parser.parse_args()
 
-    session: 'Session' = db_access.get_session()
     target_channel = args.channel
 
-    channel = Channel.get_channel_or_fail(session, target_channel)
+    channel = Channel.get_channel_or_fail(target_channel)
 
     print(*channel.get_simulation_channel().y_dimension, sep='\n')

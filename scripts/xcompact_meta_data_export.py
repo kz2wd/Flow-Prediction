@@ -1,13 +1,14 @@
 import argparse
 
+from scripts.database_add import add_dataset
 from scripts.parser_utils import dir_path
-from scripts.xcompact_utils import build_export_metadata
+from scripts.xcompact_utils import upload_metadata
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import db_access
+from space_exploration.dataset.db_access import global_session
 from space_exploration.dataset.s3_access import get_ds
 
 if __name__ == "__main__":
-    session = db_access.get_session()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--simulation-path", required=True, type=dir_path)
@@ -17,11 +18,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    channel = Channel.get_channel_or_fail(session, args.existing_channel_name)
+    channel = Channel.get_channel_or_fail(args.existing_channel_name)
 
     ds = get_ds(args.s3_dataset)
-    build_export_metadata(session, ds, args.dataset_name, args.scaling, channel)
+    add_dataset(args.dataset_name, args.scaling, channel)
 
-    session.commit()
+    global_session.commit()
 
     print(f"Dataset [{args.dataset_name}] exported ✅")

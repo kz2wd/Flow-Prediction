@@ -9,8 +9,7 @@ from dask import delayed
 import dask.array as da
 import tqdm
 
-from scripts.database_add import add_dataset, add_channel
-from space_exploration.dataset.dataset_stat import DatasetStats
+from scripts.database_add import add_channel
 
 
 def get_shape_from_xdmf(folder, snapshot_index):
@@ -100,18 +99,6 @@ def get_chunk_size(inner_shape, target_chunk_MB = 200):
 
     return samples_per_chunk, *inner_shape
 
-def build_export_metadata(session, ds, dataset_name, scaling, channel):
-
-    stats = DatasetStats.from_ds(ds)
-
-    add_dataset(
-        session=session,
-        name=dataset_name,
-        scaling=scaling,
-        channel=channel,
-        stats=stats,
-    )
-
 
 def read_ypi(folder):
     with open(folder / "ypi.dat", 'r') as f:
@@ -139,7 +126,7 @@ def get_simulation_data(filepath):
     return simulation_data
 
 
-def add_channel_from_simulation(session, simulation_folder, channel_name, channel_scale, input_file_path=None):
+def add_channel_from_simulation(simulation_folder, channel_name, channel_scale, input_file_path=None):
 
     if input_file_path:
         input_file = Path(input_file_path)
@@ -150,10 +137,10 @@ def add_channel_from_simulation(session, simulation_folder, channel_name, channe
     channel_data = get_simulation_data(input_file)
     y_dim = read_ypi(simulation_folder)
 
-    channel = add_channel(session,
-                channel_name,
-                channel_data['nx'], channel_data['xlx'],
-                y_dim,
-                channel_data['nz'], channel_data['zlz'],
-                channel_scale)
+    channel = add_channel(
+            channel_name,
+            channel_data['nx'], channel_data['xlx'],
+            y_dim,
+            channel_data['nz'], channel_data['zlz'],
+            channel_scale)
     return channel

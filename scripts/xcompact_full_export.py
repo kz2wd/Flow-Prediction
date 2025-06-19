@@ -5,13 +5,13 @@ from pathlib import Path
 from dask.diagnostics import ProgressBar
 
 import scripts.xcompact_utils as xc_utils
+from scripts.database_add import add_dataset
 from scripts.parser_utils import dir_path
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import s3_access, db_access
-
+from space_exploration.dataset.db_access import global_session
 
 if __name__ == "__main__":
-    session = db_access.get_session()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--simulation-folder", required=True, type=dir_path, help="Folder containing the simulation")
@@ -22,18 +22,20 @@ if __name__ == "__main__":
     parser.add_argument("--i3d-input-file", type=str, help="Use it if simulation input file is not in the simulation folders and name input.i3d")
     parser.add_argument("--y-lim", default=64, type=int,
                         help="limit of index to keep in y dimension")
+    parser.add_argument("--auto", default=False, type=bool,
+                        help="will not ask for user input if true")
 
     args = parser.parse_args()
 
     simulation_folder = Path(args.simulation_folder)
 
     # Resolve channel, either it already exist, just fetch it, otherwise create it, export it, use it
-    channel_fetch = Channel.get_channel(session, args.channel_name)
+    channel_fetch = Channel.get_channel(args.channel_name)
     if channel_fetch is not None:
         channel = channel_fetch
         print(f"✅ Found existing channel [{args.channel_name}]")
     else:
-        channel = xc_utils.add_channel_from_simulation(session, simulation_folder, args.channel_name, args.channel_scale, args.i3d_input_file)
+        channel = xc_utils.add_channel_from_simulation(simulation_folder, args.channel_name, args.channel_scale, args.i3d_input_file)
         print(f"✅ Created new channel [{args.channel_name}]")
 
     x, y = xc_utils.get_snapshot_xy(simulation_folder, y_lim=args.y_lim)
@@ -51,10 +53,19 @@ if __name__ == "__main__":
         s3_access.store_xy(x, y, f"simulations/{args.dataset_name}.zarr")
 
     print("Exporting metadata to SQL database")
-    xc_utils.build_export_metadata(session, y, args.dataset_name, args.dataset_scaling, channel)
+    dataset = add_dataset(args.dataset_name, args.dataset_scaling, channel)
 
-    input("Press [ENTER] to commit changes")
-    session.commit()
+    if not args.auto:
+        input("Press [ENTER] to commit changes")
+    try:
+        global_session.commit()
+    except Exception as e:
+        print("Encountered exception, likely dataset metadata already exists, you may ignore this error")
 
     print("✅✅✅ Success ✅✅✅")
     print(f"Dataset [{args.dataset_name}] fully exported")
+
+    if not args.auto:
+        input("Press [ENTER] to proceed to benchmark")
+
+    dataset.benchmark.compute()

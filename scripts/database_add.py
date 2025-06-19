@@ -1,31 +1,19 @@
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.beans.channel_y_bean import ChannelY
 from space_exploration.beans.dataset_bean import Dataset
-from space_exploration.beans.dataset_stat_bean import DatasetStat
+from space_exploration.dataset.db_access import global_session
 
 
-def add_dataset(session, name, channel, scaling, stats):
+def add_dataset(name, channel, scaling):
     dataset = Dataset(
         name=name,
         scaling=scaling,
         channel=channel,
     )
+    global_session.add(dataset)
+    return dataset
 
-    for i in range(len(stats.u_means)):
-        stat = DatasetStat(
-            y_index=i,
-            u_mean=float(stats.u_means[i]),
-            v_mean=float(stats.v_means[i]),
-            w_mean=float(stats.w_means[i]),
-            u_std=float(stats.u_stds[i]),
-            v_std=float(stats.v_stds[i]),
-            w_std=float(stats.w_stds[i]),
-        )
-        dataset.stats.append(stat)
-
-    session.add(dataset)
-
-def add_channel(session, name, x_resolution, x_length, y_dimension, z_resolution, z_length, y_scale_to_y_plus, discard_first_y=False):
+def add_channel(name, x_resolution, x_length, y_dimension, z_resolution, z_length, y_scale_to_y_plus, discard_first_y=False):
     channel = Channel(
         name=name,
         x_resolution=x_resolution,
@@ -40,5 +28,5 @@ def add_channel(session, name, x_resolution, x_length, y_dimension, z_resolution
         channel_y = ChannelY(y_index=i, y_coord=float(coord))
         channel.y_dimension.append(channel_y)
 
-    session.add(channel)
+    global_session.add(channel)
     return channel

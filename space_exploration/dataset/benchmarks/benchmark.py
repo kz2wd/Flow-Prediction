@@ -22,13 +22,17 @@ class Benchmark:
         self.subset_size = subset_size
         self.dataset = dataset
         self.loaded = False
+        self.benchmarks = {}
 
 
     def load(self):
-        self.base_df = s3_access.load_df(self.get_benchmark_storage_name(self.BASE_DF))
-        self.channel_df = s3_access.load_df(self.get_benchmark_storage_name(self.CHANNEL_DF))
-        self.component_df = s3_access.load_df(self.get_benchmark_storage_name(self.COMPONENT_DF))
-        self.loaded = self.base_df is not None and self.channel_df is not None and self.component_df is not None
+        self.benchmarks = {}
+        for name in BenchmarkKeys:
+            df = s3_access.load_df(self.get_benchmark_storage_name(name))
+            if df is not None:
+                self.benchmarks[name] = df
+
+        self.loaded = len(self.benchmarks) > 0
 
 
     def compute(self):

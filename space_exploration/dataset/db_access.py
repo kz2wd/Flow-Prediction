@@ -9,7 +9,6 @@ from space_exploration.beans.alchemy_base import Base
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.beans.channel_y_bean import ChannelY
 from space_exploration.beans.dataset_bean import Dataset
-from space_exploration.beans.dataset_stat_bean import DatasetStat
 from space_exploration.beans.prediction_subspace_bean import PredictionSubSpace
 from space_exploration.beans.training_bean import Training
 
@@ -26,7 +25,6 @@ def get_db_url():
 Channel()
 ChannelY()
 Dataset()
-DatasetStat()
 PredictionSubSpace()
 Training()
 

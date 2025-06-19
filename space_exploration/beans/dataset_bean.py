@@ -13,7 +13,6 @@ from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
 from space_exploration.dataset.benchmarks.benchmark import Benchmark
-from space_exploration.dataset.dataset_stat import DatasetStats
 from space_exploration.dataset.transforms.general.default_unchanged import DefaultUnchanged
 from space_exploration.dataset.s3_dataset import S3Dataset
 
@@ -23,7 +22,6 @@ class Dataset(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     scaling = Column(Float)
-    stats = relationship("DatasetStat", back_populates="dataset", cascade="all, delete-orphan")
     channel_id = Column(Integer, ForeignKey('channels.id'))
     channel: Mapped[Channel] = relationship("Channel")
 
@@ -42,22 +40,6 @@ class Dataset(Base):
     def reload_ds(self):
         self.__dict__.pop('x', None)
         self.__dict__.pop('y', None)
-
-    def get_stats(self):
-        u_means = []
-        v_means = []
-        w_means = []
-        u_stds = []
-        v_stds = []
-        w_stds = []
-        for stat in self.stats:
-            u_means.append(stat.u_mean)
-            v_means.append(stat.v_mean)
-            w_means.append(stat.w_mean)
-            u_stds.append(stat.u_std)
-            v_stds.append(stat.v_std)
-            w_stds.append(stat.w_std)
-        return DatasetStats(np.array(u_means), np.array(v_means), np.array(w_means), np.array(u_stds), np.array(v_stds), np.array(w_stds))
 
     @property
     def size(self):

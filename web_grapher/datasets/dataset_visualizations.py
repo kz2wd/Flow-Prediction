@@ -3,6 +3,7 @@ import plotly.express as px
 
 from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.dataset import db_access
+from space_exploration.dataset.benchmarks.benchmark_keys import BenchmarkKeys
 
 DATASET_VISUALIZATIONS = {}
 
@@ -14,7 +15,7 @@ def visualization(name):
     return decorator
 
 
-benchmarks_df = {"base": None, "channel": None, "component": None}
+benchmarks_df = {}
 
 def reload_combined_df():
     global benchmarks_df
@@ -22,11 +23,10 @@ def reload_combined_df():
     benchmarks = [ds.benchmark for ds in dss if ds.benchmark.loaded]
     if len(benchmarks) == 0:
         return
-    benchmarks_df = {
-        "base": pd.concat((b.base_df for b in benchmarks), ignore_index=True),
-        "channel": pd.concat((b.channel_df for b in benchmarks), ignore_index=True),
-        "component": pd.concat((b.component_df for b in benchmarks), ignore_index=True),
-    }
+    benchmarks_df = {}
+    for key in BenchmarkKeys:
+        benchmarks_df[key] = pd.concat((b.benchmarks[key] for b in benchmarks if key in b.benchmarks), ignore_index=True)
+
 
 reload_combined_df()
 
@@ -47,7 +47,7 @@ def compare_dataset_sizes(ids):
 
 @visualization("U Velocities Along Y")
 def u_velo_along_y(ids):
-    combined_df = get_combined_df("component")
+    combined_df = get_combined_df(BenchmarkKeys.VELOCITY_MEAN_ALONG_Y)
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
     filtered_df = filtered_df[filtered_df["component"] == "u"]
 
@@ -58,7 +58,7 @@ def u_velo_along_y(ids):
 
 @visualization("Stds")
 def stds(ids):
-    combined_df = get_combined_df("component")
+    combined_df = get_combined_df(BenchmarkKeys.VELOCITY_STD_ALONG_Y)
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
 
     fig = px.line(filtered_df, x="y_dimension", y="velocity_std", color="name", line_dash="component")
@@ -69,7 +69,7 @@ def stds(ids):
 
 @visualization("squared_velocity_mean")
 def squared_velocity_mean(ids):
-    combined_df = get_combined_df("component")
+    combined_df = get_combined_df(BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y)
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
 
     fig = px.line(filtered_df, x="y_dimension", y="squared_velocity_mean", color="name", line_dash="component", log_x=True)
@@ -79,7 +79,7 @@ def squared_velocity_mean(ids):
 
 @visualization("reynold uv")
 def reynold_uv(ids):
-    combined_df = get_combined_df("channel")
+    combined_df = get_combined_df(BenchmarkKeys.REYNOLDS_UV)
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
 
     fig = px.line(filtered_df, x="y_dimension", y="reynolds_uv", color="name")

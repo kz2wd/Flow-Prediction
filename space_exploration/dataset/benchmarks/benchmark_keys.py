@@ -1,7 +1,6 @@
+from strenum import StrEnum
 
-import strenum
-
-class BenchmarkKeys(strenum):
+class BenchmarkKeys(StrEnum):
     VELOCITY_MEAN_ALONG_Y = "velocity_mean_along_y"
     VELOCITY_STD_ALONG_Y = "velocity_std_along_y"
     FLUCTUATION_ALONG_Y = "fluctuation_along_y"

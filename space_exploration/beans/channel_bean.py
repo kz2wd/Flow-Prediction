@@ -32,7 +32,7 @@ class Channel(Base):
     @staticmethod
     def get_channel_or_fail(name):
         from space_exploration.dataset.db_access import global_session
-        channel = Channel.get_channel(global_session, name)
+        channel = Channel.get_channel(name)
         if channel is None:
             print(f"Channel {name} not found ❌")
             print("Available channels:")

@@ -1,12 +1,6 @@
 from argparse import ArgumentParser
-from typing import TYPE_CHECKING
 
-from space_exploration.dataset import db_access
 from space_exploration.beans.dataset_bean import Dataset
-
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
 
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
