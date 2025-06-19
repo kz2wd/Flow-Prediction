@@ -1,19 +1,28 @@
-from dash import dcc, html
-
 from space_exploration.beans.training_bean import Training
 from space_exploration.dataset.db_access import global_session
+from space_exploration.run_training import ModelTraining
+
+TRAINING_VISUALIZATIONS = {}
 
 
-def get_training_tab(app):
+def visualization(name):
+    def decorator(func):
+        TRAINING_VISUALIZATIONS[name] = func
+        return func
+    return decorator
 
-    tab = dcc.Tab(label="Trainings",
-                  children=[
-                      html.Label("Select trainings:"),
-                      dcc.Dropdown(
-                          id="training-dropdown",
-                          options=[{"label": tr.name, "value": tr.id} for tr in global_session.query(Training).all()],
-                          multi=True
-                      ),
-                  ]
-              )
-    return tab
+trainings = {}
+
+def reload_trainings():
+    global trainings
+    trs = global_session.query(Training).all()
+    trainings = {tr.id: ModelTraining.from_training_bean(tr) for tr in trs}
+
+
+reload_trainings()
+
+
+def mse_along_y(ids):
+    pass
+
+

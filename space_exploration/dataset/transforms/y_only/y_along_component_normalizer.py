@@ -5,13 +5,12 @@ from space_exploration.dataset.transforms.transformer_base import TransformBase
 # Normalization used in the paper
 class YAlongComponentNormalizer(TransformBase):
 
-    def __init__(self, dataset):
-        super().__init__(dataset)
-        self.stats = dataset.get_stats()
+    def __init__(self):
+        super().__init__()
 
 
     def from_training(self, ds):
-        return y_along_component_denormalize(ds, self.stats)
+        return y_along_component_denormalize(ds)
 
     def to_training(self, ds):
-        return y_along_component_normalize(ds, self.stats)
+        return y_along_component_normalize(ds)

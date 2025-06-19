@@ -1,10 +1,12 @@
 import dask.array as da
 
 
-def y_along_component_denormalize(ds, stats):
+def y_along_component_denormalize(ds):
     components = [0, 1, 2]  # u, v, w
-    stds = [stats.u_stds, stats.v_stds, stats.w_stds]
-    means = [stats.u_means, stats.v_means, stats.w_means]
+    sample_size = 100
+
+    means = ds[sample_size:].mean(axis=(0, 2, 4)).compute()
+    stds = ds[sample_size:].std(axis=(0, 2, 4)).compute()
 
     denorm_components = []
     for c, std, mean in zip(components, stds, means):
@@ -17,11 +19,8 @@ def y_along_component_denormalize(ds, stats):
     return da.stack(denorm_components, axis=1)
 
 
-def y_along_component_normalize(ds, stats):
+def y_along_component_normalize(ds):
     components = [0, 1, 2]  # channel indices: u, v, w
-    # stds = [stats.u_stds, stats.v_stds, stats.w_stds]
-    # means = [stats.u_means, stats.v_means, stats.w_means]
-
     sample_size = 100
 
     means = ds[sample_size:].mean(axis=(0, 2, 4)).compute()

@@ -4,7 +4,7 @@ from dash import html, dcc
 
 from web_grapher.channels.channels_interface import get_channel_tab
 from web_grapher.datasets.datasets_interface import get_dataset_tab
-from web_grapher.trainings.training_visualizations import get_training_tab
+from web_grapher.trainings.training_interface import get_training_tab
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MORPH])
 

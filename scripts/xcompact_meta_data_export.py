@@ -2,7 +2,6 @@ import argparse
 
 from scripts.database_add import add_dataset
 from scripts.parser_utils import dir_path
-from scripts.xcompact_utils import upload_metadata
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import db_access
 from space_exploration.dataset.db_access import global_session

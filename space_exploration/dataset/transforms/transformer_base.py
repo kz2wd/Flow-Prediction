@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class TransformBase(ABC):
 
-    def __init__(self, dataset):
+    def __init__(self):
         pass
 
     @abstractmethod

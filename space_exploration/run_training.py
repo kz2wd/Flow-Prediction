@@ -14,7 +14,7 @@ from space_exploration.dataset import s3_access
 from space_exploration.dataset.db_access import global_session
 from space_exploration.dataset.transforms.AllTransforms import TransformationReferences
 from space_exploration.models.AllModels import ModelReferences
-from space_exploration.training_utils import get_split_datasets, prepare_dataset, get_prediction_ds
+from space_exploration.training_utils import get_split_datasets, prepare_dataset, get_prediction_ds, test_gan
 
 
 class ModelTraining:
@@ -30,10 +30,9 @@ class ModelTraining:
         self.model_name = model_name
         self.bean = bean
 
-
         self.model_ref = ModelReferences(model_name)
 
-        self.model = self.model_ref.model
+        self.model = self.model_ref.model()
         self.device = self.model.device
 
         self.dataset = Dataset.get_dataset_or_fail(dataset_name)
@@ -73,12 +72,13 @@ class ModelTraining:
 
             finally:
                 self._upload_best_model()
+                self._test_model()
                 self._clean_training()
 
     def _prepare_train(self):
         y_dim = self.model.prediction_sub_space.y[1]
-        ds = self.dataset.get_training_dataset(y_dim, self.x_transform_ref, self.y_transform_ref.transformation, self.y_transform_ref.transformation, self.data_amount)
-        self.train_ds, self.val_ds, _ = get_split_datasets(ds, batch_size=4, val_ratio=0.1, test_ratio=0.0,
+        ds = self.dataset.get_training_dataset(y_dim, self.x_transform_ref.transformation, self.y_transform_ref.transformation, self.data_amount)
+        self.train_ds, self.val_ds, self.test_ds = get_split_datasets(ds, batch_size=4, val_ratio=0.2, test_ratio=0.05,
                                                  device=self.model.device)
 
 
@@ -260,4 +260,8 @@ class ModelTraining:
         ds = prepare_dataset(dataset, 1)
         prediction = get_prediction_ds(self, ds)
         s3_access.store_ds(prediction, self.prediction_ds_path(benchmark_ds_name))
+
+    def _test_model(self):
+        mse = test_gan(self, self.test_ds)
+        print(f"MSE: {mse}")
 
