@@ -17,11 +17,12 @@ class Training(Base):
     run_id = Column(String)
 
     @staticmethod
-    def get_training_or_fail(session, run_id):
-        result: Training | None = session.query(Training).filter_by(run_id=run_id).first()
+    def get_training_or_fail(run_id):
+        from space_exploration.dataset.db_access import global_session
+        result: Training | None = global_session.query(Training).filter_by(run_id=run_id).first()
         if result is None:
             print(f"Training [{run_id}] not found ❌")
             print("Available Training:")
-            print(*(training.run_id for training in session.query(Training).all()))
+            print(*(training.run_id for training in global_session.query(Training).all()))
             raise Exception(f"Training [{run_id}] not found <UNK>")
         return result

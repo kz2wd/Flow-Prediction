@@ -12,9 +12,8 @@ from space_exploration.beans.alchemy_base import Base
 from space_exploration.beans.channel_bean import Channel
 from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
-from space_exploration.dataset.benchmark import Benchmark
+from space_exploration.dataset.benchmarks.benchmark import Benchmark
 from space_exploration.dataset.dataset_stat import DatasetStats
-from space_exploration.dataset.db_access import global_session
 from space_exploration.dataset.transforms.general.default_unchanged import DefaultUnchanged
 from space_exploration.dataset.s3_dataset import S3Dataset
 
@@ -73,7 +72,7 @@ class Dataset(Base):
 
     @functools.cached_property
     def benchmark(self):
-        benchmark = Benchmark(self)
+        benchmark = Benchmark(self, 250)
         benchmark.load()
         return benchmark
 
@@ -120,6 +119,7 @@ class Dataset(Base):
 
     @staticmethod
     def get_dataset_or_fail(name):
+        from space_exploration.dataset.db_access import global_session
         result: Dataset | None = global_session.query(Dataset).filter_by(name=name).first()
         if result is None:
             print(f"Dataset [{name}] not found ❌")

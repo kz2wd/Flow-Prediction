@@ -5,6 +5,7 @@ import pandas as pd
 from dask.diagnostics import ProgressBar
 
 from space_exploration.dataset import s3_access
+from space_exploration.dataset.benchmarks.benchmark_keys import BenchmarkKeys
 
 if TYPE_CHECKING:
     from space_exploration.beans.dataset_bean import Dataset
@@ -14,12 +15,11 @@ from sklearn.metrics import pairwise_distances
 from sklearn.cluster import KMeans
 
 
+
 class Benchmark:
     BENCHMARK_BUCKET = "benchmarks"
-    BASE_DF = "base"
-    CHANNEL_DF = "channel"
-    COMPONENT_DF = "component"
-    def __init__(self, dataset: 'Dataset'):
+    def __init__(self, dataset: 'Dataset', subset_size):
+        self.subset_size = subset_size
         self.dataset = dataset
         self.loaded = False
 
@@ -30,7 +30,9 @@ class Benchmark:
         self.component_df = s3_access.load_df(self.get_benchmark_storage_name(self.COMPONENT_DF))
         self.loaded = self.base_df is not None and self.channel_df is not None and self.component_df is not None
 
+
     def compute(self):
+
         print("Computing Benchmark Data")
 
         # ds shape: (Batch, velocity component, x, y, z)
@@ -42,54 +44,77 @@ class Benchmark:
         y_dimension = y_dimension[y_start: max_y]
         y_dimension = y_dimension * self.dataset.channel.y_scale_to_y_plus
 
-        ds = ds[:, :, :, y_start:, :]
-
-
-        with ProgressBar():
-            velocity_mean = ds.mean(axis=(0, 2, 4)).compute()  # (3, y)
-            velocity_std = ds.std(axis=(2, 4)).mean(axis=0).compute()  # (3, y)
-            fluctuation = ds - velocity_mean[None, :, None, :, None]
+        def run_benchmark(internal_ds):
+            velocity_mean = internal_ds.mean(axis=(0, 2, 4)).compute()  # (3, y)
+            velocity_std = internal_ds.std(axis=(2, 4)).mean(axis=0).compute()  # (3, y)
+            fluctuation = internal_ds - velocity_mean[None, :, None, :, None]
             squared_velocity_mean = (fluctuation ** 2).mean(axis=(0, 2, 4)).compute()  # (3, y)
             reynolds_uv = (fluctuation[:, 0] * fluctuation[:, 1]).mean(axis=(0, 1, 3)).compute()  # (y,)
+
+            return {
+                BenchmarkKeys.VELOCITY_MEAN_ALONG_Y: velocity_mean,
+                BenchmarkKeys.VELOCITY_STD_ALONG_Y: velocity_std,
+                BenchmarkKeys.FLUCTUATION_ALONG_Y: fluctuation,
+                BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y: squared_velocity_mean,
+                BenchmarkKeys.REYNOLDS_UV: reynolds_uv,
+            }
+
+        ds = ds[:self.subset_size, :, :, y_start:, :]
+
+        benchmark_dict = run_benchmark(ds)
 
         components = ['u', 'v', 'w']
         y_size = len(y_dimension)
 
-        base_dict = {
-            **compute_pca_coverage(ds),
-            **prediction_difficulty(ds),
-            'dataset_id': self.dataset.id,
-            'name': str(self.dataset.name),
-        }
+        not_aware_benchmarks = []
+        channel_aware_benchmarks = [
+            BenchmarkKeys.REYNOLDS_UV,
+        ]
+        component_aware_benchmarks = [
+            BenchmarkKeys.VELOCITY_MEAN_ALONG_Y,
+            BenchmarkKeys.VELOCITY_STD_ALONG_Y,
+            BenchmarkKeys.FLUCTUATION_ALONG_Y,
+            BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y,
+        ]
 
-        channel_dict = {
-            'reynolds_uv': reynolds_uv.flatten(),
-            'y_dimension': y_dimension,
-            'dataset_id': self.dataset.id,
-            'name': str(self.dataset.name),
-        }
+        def not_aware(benchmark_name):
+            return {
+                benchmark_name: benchmark_dict[benchmark_name].flatten(),
+                'dataset_id': self.dataset.id,
+                'name': str(self.dataset.name),
+            }
 
-        component_dict = {
-            'component': np.repeat(components, y_size),
-            'y_dimension': np.tile(y_dimension, len(components)),
-            'velocity_mean': velocity_mean.flatten(),
-            'velocity_std': velocity_std.flatten(),
-            'squared_velocity_mean': squared_velocity_mean.flatten(),
+        def channel_aware(benchmark_name):
+            return {
+                benchmark_name: benchmark_dict[benchmark_name].flatten(),
+                'y_dimension': y_dimension,
+                'dataset_id': self.dataset.id,
+                'name': str(self.dataset.name),
+            }
+        def component_aware(benchmark_name):
+            return {
+                benchmark_name: benchmark_dict[benchmark_name].flatten(),
+                'component': np.repeat(components, y_size),
+                'y_dimension': np.tile(y_dimension, len(components)),
+                'dataset_id': self.dataset.id,
+                'name': str(self.dataset.name),
+            }
 
-            'dataset_id': self.dataset.id,
-            'name': str(self.dataset.name),
-        }
+        treatments = [
+            (not_aware_benchmarks, not_aware),
+            (channel_aware_benchmarks, channel_aware),
+            (component_aware_benchmarks, component_aware),
+        ]
 
-        #** compute_state_coverage(ds),
+        for benchmark_set, treatment in treatments:
+            for benchmark_name in benchmark_set:
+                s3_access.store_df(pd.DataFrame(treatment(benchmark_name)), self.get_benchmark_storage_name(benchmark_name))
 
-        s3_access.store_df(pd.DataFrame(base_dict), self.get_benchmark_storage_name(self.BASE_DF))
-        s3_access.store_df(pd.DataFrame(channel_dict), self.get_benchmark_storage_name(self.CHANNEL_DF))
-        s3_access.store_df(pd.DataFrame(component_dict), self.get_benchmark_storage_name(self.COMPONENT_DF))
-        print(f"Saved benchmark for {self.dataset.name}")
+        print(f"Saved benchmarks for {self.dataset.name}")
 
 
-    def get_benchmark_storage_name(self, df_type):
-        return f"s3://{self.BENCHMARK_BUCKET}/{self.dataset.name}/{df_type}.parquet"
+    def get_benchmark_storage_name(self, benchmark_name):
+        return f"s3://{self.BENCHMARK_BUCKET}/{self.dataset.name}/{benchmark_name}.parquet"
 
 
 def compute_pca_coverage(ds, n_components=50):

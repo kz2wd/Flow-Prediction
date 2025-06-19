@@ -40,8 +40,6 @@ def get_dataset_tab(app):
 
     tab = dcc.Tab(label="Dataset",
             children=[
-                html.Button("Reload data", id="reload-data-btn", className="btn btn-secondary"),
-
                 html.Label("Select Datasets:"),
                 dcc.Dropdown(
                     id="dataset-dropdown",
@@ -57,6 +55,8 @@ def get_dataset_tab(app):
                 ),
 
                 html.Button("Generate Graph", id="plot-btn", className="btn btn-secondary"),
+                html.Button("Reload data", id="reload-data-btn", className="btn btn-secondary"),
+
                 dcc.Graph(id="plot-output")
             ]
         )
