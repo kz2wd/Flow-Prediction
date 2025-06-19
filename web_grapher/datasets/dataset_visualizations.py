@@ -25,7 +25,10 @@ def reload_combined_df():
         return
     benchmarks_df = {}
     for key in BenchmarkKeys:
-        benchmarks_df[key] = pd.concat((b.benchmarks[key] for b in benchmarks if key in b.benchmarks), ignore_index=True)
+        all_sub_benchmark = [b.benchmarks[key] for b in benchmarks if key in b.benchmarks]
+        if len(all_sub_benchmark) == 0:
+            continue
+        benchmarks_df[key] = pd.concat(all_sub_benchmark, ignore_index=True)
 
 
 reload_combined_df()
@@ -51,7 +54,7 @@ def u_velo_along_y(ids):
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
     filtered_df = filtered_df[filtered_df["component"] == "u"]
 
-    fig = px.line(filtered_df, x="y_dimension", y="velocity_mean", color="name", log_x=True)
+    fig = px.line(filtered_df, x="y_dimension", y=BenchmarkKeys.VELOCITY_MEAN_ALONG_Y, color="name", log_x=True)
     fig.update_layout(title="Dataset Velocities")
     return fig
 
@@ -61,7 +64,7 @@ def stds(ids):
     combined_df = get_combined_df(BenchmarkKeys.VELOCITY_STD_ALONG_Y)
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
 
-    fig = px.line(filtered_df, x="y_dimension", y="velocity_std", color="name", line_dash="component")
+    fig = px.line(filtered_df, x="y_dimension", y=BenchmarkKeys.VELOCITY_STD_ALONG_Y, color="name", line_dash="component")
     fig.update_layout(title="velocity_std")
     return fig
 
@@ -72,7 +75,7 @@ def squared_velocity_mean(ids):
     combined_df = get_combined_df(BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y)
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
 
-    fig = px.line(filtered_df, x="y_dimension", y="squared_velocity_mean", color="name", line_dash="component", log_x=True)
+    fig = px.line(filtered_df, x="y_dimension", y=BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y, color="name", line_dash="component", log_x=True)
     fig.update_layout(title="squared_velocity_mean")
     return fig
 
@@ -82,7 +85,7 @@ def reynold_uv(ids):
     combined_df = get_combined_df(BenchmarkKeys.REYNOLDS_UV)
     filtered_df = combined_df[combined_df['dataset_id'].isin(ids)]
 
-    fig = px.line(filtered_df, x="y_dimension", y="reynolds_uv", color="name")
+    fig = px.line(filtered_df, x="y_dimension", y=BenchmarkKeys.REYNOLDS_UV, color="name")
     fig.update_layout(title="reynold uv")
     return fig
 

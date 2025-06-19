@@ -77,7 +77,7 @@ class Benchmark:
         component_aware_benchmarks = [
             BenchmarkKeys.VELOCITY_MEAN_ALONG_Y,
             BenchmarkKeys.VELOCITY_STD_ALONG_Y,
-            BenchmarkKeys.FLUCTUATION_ALONG_Y,
+            # BenchmarkKeys.FLUCTUATION_ALONG_Y,
             BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y,
         ]
 
@@ -112,6 +112,7 @@ class Benchmark:
 
         for benchmark_set, treatment in treatments:
             for benchmark_name in benchmark_set:
+                print(f"Saving {benchmark_name}")
                 s3_access.store_df(pd.DataFrame(treatment(benchmark_name)), self.get_benchmark_storage_name(benchmark_name))
 
         print(f"Saved benchmarks for {self.dataset.name}")
