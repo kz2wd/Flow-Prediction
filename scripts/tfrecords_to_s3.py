@@ -40,8 +40,7 @@ def main():
     X = np.transpose(X, (0, 4, 1, 2, 3))
     x_ds = da.from_array(X, chunks=(chunk_size, 3, nx, ny, nz))
 
-    session = db_access.get_session()
-    dataset = Dataset.get_dataset_or_fail(session, "paper-train-normalized")
+    dataset = Dataset.get_dataset_or_fail("paper-train-normalized")
     stats = dataset.get_stats()
     # y_ds = y_along_component_denormalize(y_ds, stats)
 

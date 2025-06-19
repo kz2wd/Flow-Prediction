@@ -13,9 +13,8 @@ if __name__ == '__main__':
     arg_parser.add_argument("--dataset", required=True)
     args = arg_parser.parse_args()
 
-    session: 'Session' = db_access.get_session()
     target_dataset = args.dataset
 
-    dataset = Dataset.get_dataset_or_fail(session, target_dataset)
+    dataset = Dataset.get_dataset_or_fail(target_dataset)
 
     print(dataset.analysis_df)

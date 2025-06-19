@@ -10,13 +10,15 @@ import tqdm
 from space_exploration.FolderManager import FolderManager
 from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.beans.training_bean import Training
+from space_exploration.dataset import s3_access
+from space_exploration.dataset.db_access import global_session
 from space_exploration.dataset.transforms.AllTransforms import TransformationReferences
 from space_exploration.models.AllModels import ModelReferences
-from space_exploration.training_utils import get_split_datasets
+from space_exploration.training_utils import get_split_datasets, prepare_dataset, get_prediction_ds
 
 
 class ModelTraining:
-    def __init__(self, session, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None, bean=None):
+    def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None, bean=None):
 
         self.train_patience = train_patience
         self.saving_freq = saving_freq
@@ -26,8 +28,6 @@ class ModelTraining:
         self.x_transform_name = x_transform_name
         self.dataset_name = dataset_name
         self.model_name = model_name
-        self.session = session
-
         self.bean = bean
 
 
@@ -36,7 +36,7 @@ class ModelTraining:
         self.model = self.model_ref.model
         self.device = self.model.device
 
-        self.dataset = Dataset.get_dataset_or_fail(session, dataset_name)
+        self.dataset = Dataset.get_dataset_or_fail(dataset_name)
 
         self.x_transform_ref = TransformationReferences(x_transform_name)
         self.y_transform_ref = TransformationReferences(y_transform_name)
@@ -225,8 +225,8 @@ class ModelTraining:
             y_transform=str(self.y_transform_ref),
             run_id=run_id,
         )
-        self.session.add(training)
-        self.session.commit()
+        global_session.add(training)
+        global_session.commit()
 
         self.bean = training
 
@@ -250,3 +250,14 @@ class ModelTraining:
         model_training = ModelTraining(bean.model, bean.dataset.name, bean.x_transform, bean.y_transform,
                                        bean.batch_size, bean.data_amount, bean=bean)
         return model_training
+
+
+    def prediction_ds_path(self, benchmark_ds_name):
+        return f"{self.name}/{benchmark_ds_name}-prediction.zarr"
+
+    def benchmark(self, benchmark_ds_name="re200-sr1etot"):
+        dataset = Dataset.get_dataset_or_fail(benchmark_ds_name)
+        ds = prepare_dataset(dataset, 1)
+        prediction = get_prediction_ds(self, ds)
+        s3_access.store_ds(prediction, self.prediction_ds_path(benchmark_ds_name))
+

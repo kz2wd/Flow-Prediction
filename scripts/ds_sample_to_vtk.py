@@ -7,9 +7,8 @@ from space_exploration.dataset import db_access
 
 
 def main():
-    session = db_access.get_session()
     target_dataset = "re200-sr001etot"
-    ds = Dataset.get_dataset_or_fail(session, target_dataset)
+    ds = Dataset.get_dataset_or_fail(target_dataset)
     ds.export_frame_vts(0)
 
 

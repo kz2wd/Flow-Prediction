@@ -6,8 +6,7 @@ from space_exploration.training_utils import train_gan, get_split_datasets
 
 
 def launch_training(model_ref, dataset_name, x_transform_ref, y_transform_ref):
-    session = db_access.get_session()
-    dataset = Dataset.get_dataset_or_fail(session, dataset_name)
+    dataset = Dataset.get_dataset_or_fail(dataset_name)
 
     model = model_ref.model()
     y_dim = model.prediction_sub_space.y[1]

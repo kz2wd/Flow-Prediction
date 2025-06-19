@@ -14,6 +14,7 @@ from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
 from space_exploration.dataset.benchmark import Benchmark
 from space_exploration.dataset.dataset_stat import DatasetStats
+from space_exploration.dataset.db_access import global_session
 from space_exploration.dataset.transforms.general.default_unchanged import DefaultUnchanged
 from space_exploration.dataset.s3_dataset import S3Dataset
 
@@ -118,12 +119,12 @@ class Dataset(Base):
         print(f"Wrote frame {frame} to {filename}")
 
     @staticmethod
-    def get_dataset_or_fail(session, name):
-        result: Dataset | None = session.query(Dataset).filter_by(name=name).first()
+    def get_dataset_or_fail(name):
+        result: Dataset | None = global_session.query(Dataset).filter_by(name=name).first()
         if result is None:
             print(f"Dataset [{name}] not found ❌")
             print("Available datasets:")
-            print(*(dataset.name for dataset in session.query(Dataset).all()))
+            print(*(dataset.name for dataset in global_session.query(Dataset).all()))
             raise Exception(f"Dataset [{name}] not found <UNK>")
         return result
 
