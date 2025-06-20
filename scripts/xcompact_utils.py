@@ -9,7 +9,7 @@ from dask import delayed
 import dask.array as da
 import tqdm
 
-from scripts.database_add import add_channel
+from space_exploration.beans.database_add import add_channel
 
 
 def get_shape_from_xdmf(folder, snapshot_index):

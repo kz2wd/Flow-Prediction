@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 from typing import Type
 
@@ -10,9 +12,10 @@ from vtk.util import numpy_support
 from space_exploration.FolderManager import FolderManager
 from space_exploration.beans.alchemy_base import Base
 from space_exploration.beans.channel_bean import Channel
+from space_exploration.beans.training_bean import Training
 from space_exploration.dataset import s3_access
 from space_exploration.dataset.analyzer import DatasetAnalyzer
-from space_exploration.dataset.benchmarks.benchmark import Benchmark
+from space_exploration.dataset.benchmarks.dataset_benchmark import DatasetBenchmark
 from space_exploration.dataset.transforms.general.default_unchanged import DefaultUnchanged
 from space_exploration.dataset.s3_dataset import S3Dataset
 
@@ -24,6 +27,10 @@ class Dataset(Base):
     scaling = Column(Float)
     channel_id = Column(Integer, ForeignKey('channels.id'))
     channel: Mapped[Channel] = relationship("Channel")
+    from_dataset_id = Column(Integer, ForeignKey('datasets.id'))
+    from_dataset: Mapped[Dataset] = relationship("Dataset")
+    from_training_id = Column(Integer, ForeignKey('trainings.id'))
+    from_training: Mapped[Training] = relationship("Training", foreign_keys=[from_training_id])
 
     @property
     def ds_s3_storage(self):
@@ -42,7 +49,13 @@ class Dataset(Base):
         self.__dict__.pop('y', None)
 
     @property
+    def is_generated(self):
+        return self.from_dataset is not None and self.from_training is not None
+
+    @property
     def size(self):
+        if self.is_generated:
+            return self.from_dataset.size
         return self.x.shape[0]
 
     def get_training_dataset(self, max_y, XTransform: Type = DefaultUnchanged, YTransform: Type = DefaultUnchanged, size=-1):
@@ -54,7 +67,7 @@ class Dataset(Base):
 
     @functools.cached_property
     def benchmark(self):
-        benchmark = Benchmark(self, 250)
+        benchmark = DatasetBenchmark(self, 250)
         benchmark.load()
         return benchmark
 

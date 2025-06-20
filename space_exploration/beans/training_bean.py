@@ -7,14 +7,17 @@ from space_exploration.beans.alchemy_base import Base
 class Training(Base):
     __tablename__ = 'trainings'
     id = Column(Integer, primary_key=True)
-    dataset = relationship("Dataset")
     dataset_id = Column(Integer, ForeignKey('datasets.id'))
+    dataset = relationship("Dataset", foreign_keys=[dataset_id])
     data_amount = Column(Integer)
     batch_size = Column(Integer)
     model = Column(String)
     x_transform = Column(String)
     y_transform = Column(String)
     run_id = Column(String)
+    parent_id = Column(Integer, ForeignKey('trainings.id'))
+    parent = relationship('Training', remote_side=[id])
+    name = Column(String)
 
     @staticmethod
     def get_training_or_fail(run_id):

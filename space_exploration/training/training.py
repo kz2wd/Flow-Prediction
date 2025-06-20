@@ -14,12 +14,13 @@ from space_exploration.dataset import s3_access
 from space_exploration.dataset.db_access import global_session
 from space_exploration.dataset.transforms.AllTransforms import TransformationReferences
 from space_exploration.models.AllModels import ModelReferences
-from space_exploration.training_utils import get_split_datasets, prepare_dataset, get_prediction_ds, test_gan
+from space_exploration.training.training_benchmark import TrainingBenchmark
+from space_exploration.training.training_utils import get_split_datasets, prepare_dataset, get_prediction_ds, test_gan
 
 
 class ModelTraining:
     def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None, bean=None):
-
+        mlflow.set_tracking_uri("http://localhost:5000")
         self.train_patience = train_patience
         self.saving_freq = saving_freq
         self.max_epochs = max_epochs
@@ -55,7 +56,6 @@ class ModelTraining:
         self.best_ckpt = self.artifact_dir / "checkpoint_best.pt"
 
     def run(self):
-        mlflow.set_tracking_uri("http://localhost:5000")
         with mlflow.start_run(run_name=self.name):
 
             run = mlflow.active_run()
@@ -224,6 +224,8 @@ class ModelTraining:
             x_transform=str(self.x_transform_ref),
             y_transform=str(self.y_transform_ref),
             run_id=run_id,
+            name=self.name,
+            parent=self.bean
         )
         global_session.add(training)
         global_session.commit()
@@ -253,15 +255,18 @@ class ModelTraining:
 
 
     def prediction_ds_path(self, benchmark_ds_name):
-        return f"{self.name}/{benchmark_ds_name}-prediction.zarr"
+        return f"benchmarks/training-prediction/{self.bean.run_id}/{benchmark_ds_name}-prediction.zarr"
 
-    def benchmark(self, benchmark_ds_name="re200-sr1etot"):
-        dataset = Dataset.get_dataset_or_fail(benchmark_ds_name)
-        ds = prepare_dataset(dataset, 1)
-        prediction = get_prediction_ds(self, ds)
-        s3_access.store_ds(prediction, self.prediction_ds_path(benchmark_ds_name))
+    def get_benchmark(self, benchmark_ds_name="re200-sr1etot"):
+        return TrainingBenchmark(self, benchmark_ds_name)
 
     def _test_model(self):
-        mse = test_gan(self, self.test_ds)
+        mse = test_gan(self.model, self.test_ds)
         print(f"MSE: {mse}")
 
+    def change_dataset(self, new_dataset_name, new_data_amount=-1):
+        self.dataset_name = new_dataset_name
+        self.dataset = Dataset.get_dataset_or_fail(new_dataset_name)
+        self.data_amount = new_data_amount
+        if self.data_amount == -1:
+            self.data_amount = self.dataset.size

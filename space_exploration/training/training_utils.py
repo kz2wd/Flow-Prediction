@@ -6,6 +6,8 @@ import tqdm
 import mlflow
 from pathlib import Path
 
+import dask.array as da
+
 from space_exploration.FolderManager import FolderManager
 
 from torch.utils.data import DataLoader, random_split
@@ -79,7 +81,8 @@ def get_prediction_ds(model, dataset):
             y_pred = model.generator(x_target)
             predictions.append(y_pred.cpu().numpy())
 
-    return np.concatenate(predictions, axis=0)
+    ds = da.concatenate(predictions, axis=0)
+    return ds.rechunk()
 
 
 def gen_output(model, x):

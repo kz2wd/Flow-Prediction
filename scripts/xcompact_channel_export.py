@@ -1,10 +1,8 @@
 import argparse
 from pathlib import Path
 
-from scripts.database_add import add_channel
 from scripts.parser_utils import dir_path
 from scripts.xcompact_utils import add_channel_from_simulation
-from space_exploration.dataset import db_access
 from space_exploration.dataset.db_access import global_session
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-from space_exploration.run_training import ModelTraining
+from space_exploration.training import ModelTraining
 
 
 

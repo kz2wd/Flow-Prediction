@@ -2,10 +2,9 @@ from pathlib import Path
 
 import numpy as np
 
-from scripts.database_add import add_dataset
+from space_exploration.beans.database_add import add_dataset
 from space_exploration.FolderManager import FolderManager
 from space_exploration.beans.channel_bean import Channel
-from space_exploration.dataset import db_access
 from space_exploration.dataset.db_access import global_session
 
 if __name__ == "__main__":

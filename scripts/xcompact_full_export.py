@@ -5,10 +5,10 @@ from pathlib import Path
 from dask.diagnostics import ProgressBar
 
 import scripts.xcompact_utils as xc_utils
-from scripts.database_add import add_dataset
+from space_exploration.beans.database_add import add_dataset
 from scripts.parser_utils import dir_path
 from space_exploration.beans.channel_bean import Channel
-from space_exploration.dataset import s3_access, db_access
+from space_exploration.dataset import s3_access
 from space_exploration.dataset.db_access import global_session
 
 if __name__ == "__main__":

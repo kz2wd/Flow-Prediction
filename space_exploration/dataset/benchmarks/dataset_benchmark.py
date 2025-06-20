@@ -5,7 +5,7 @@ import pandas as pd
 from dask.diagnostics import ProgressBar
 
 from space_exploration.dataset import s3_access
-from space_exploration.dataset.benchmarks.benchmark_keys import BenchmarkKeys
+from space_exploration.dataset.benchmarks.benchmark_keys import DatasetBenchmarkKeys
 
 if TYPE_CHECKING:
     from space_exploration.beans.dataset_bean import Dataset
@@ -16,7 +16,7 @@ from sklearn.cluster import KMeans
 
 
 
-class Benchmark:
+class DatasetBenchmark:
     BENCHMARK_BUCKET = "benchmarks"
     def __init__(self, dataset: 'Dataset', subset_size):
         self.subset_size = subset_size
@@ -27,7 +27,7 @@ class Benchmark:
 
     def load(self):
         self.benchmarks = {}
-        for name in BenchmarkKeys:
+        for name in DatasetBenchmarkKeys:
             df = s3_access.load_df(self.get_benchmark_storage_name(name))
             if df is not None:
                 self.benchmarks[name] = df
@@ -42,12 +42,10 @@ class Benchmark:
         # ds shape: (Batch, velocity component, x, y, z)
         ds = self.dataset.y * self.dataset.scaling
 
-        y_start = 1 if self.dataset.channel.discard_first_y else 0
-        y_dimension = self.dataset.channel.get_simulation_channel().y_dimension
-        max_y = ds.shape[3]
-        y_dimension = y_dimension[y_start: max_y]
-        y_dimension = y_dimension * self.dataset.channel.y_scale_to_y_plus
+        self._compute_intern(ds, self.dataset.channel)
 
+
+    def _compute_intern(self, ds, channel):
         def run_benchmark(internal_ds):
             velocity_mean = internal_ds.mean(axis=(0, 2, 4)).compute()  # (3, y)
             velocity_std = internal_ds.std(axis=(2, 4)).mean(axis=0).compute()  # (3, y)
@@ -56,12 +54,18 @@ class Benchmark:
             reynolds_uv = (fluctuation[:, 0] * fluctuation[:, 1]).mean(axis=(0, 1, 3)).compute()  # (y,)
 
             return {
-                BenchmarkKeys.VELOCITY_MEAN_ALONG_Y: velocity_mean,
-                BenchmarkKeys.VELOCITY_STD_ALONG_Y: velocity_std,
-                BenchmarkKeys.FLUCTUATION_ALONG_Y: fluctuation,
-                BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y: squared_velocity_mean,
-                BenchmarkKeys.REYNOLDS_UV: reynolds_uv,
+                DatasetBenchmarkKeys.VELOCITY_MEAN_ALONG_Y: velocity_mean,
+                DatasetBenchmarkKeys.VELOCITY_STD_ALONG_Y: velocity_std,
+                DatasetBenchmarkKeys.FLUCTUATION_ALONG_Y: fluctuation,
+                DatasetBenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y: squared_velocity_mean,
+                DatasetBenchmarkKeys.REYNOLDS_UV: reynolds_uv,
             }
+
+        y_start = 1 if channel.discard_first_y else 0
+        y_dimension = channel.get_simulation_channel().y_dimension
+        max_y = ds.shape[3]
+        y_dimension = y_dimension[y_start: max_y]
+        y_dimension = y_dimension * channel.y_scale_to_y_plus
 
         ds = ds[:self.subset_size, :, :, y_start:, :]
 
@@ -72,13 +76,13 @@ class Benchmark:
 
         not_aware_benchmarks = []
         channel_aware_benchmarks = [
-            BenchmarkKeys.REYNOLDS_UV,
+            DatasetBenchmarkKeys.REYNOLDS_UV,
         ]
         component_aware_benchmarks = [
-            BenchmarkKeys.VELOCITY_MEAN_ALONG_Y,
-            BenchmarkKeys.VELOCITY_STD_ALONG_Y,
+            DatasetBenchmarkKeys.VELOCITY_MEAN_ALONG_Y,
+            DatasetBenchmarkKeys.VELOCITY_STD_ALONG_Y,
             # BenchmarkKeys.FLUCTUATION_ALONG_Y,
-            BenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y,
+            DatasetBenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y,
         ]
 
         def not_aware(benchmark_name):

@@ -4,11 +4,13 @@ from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.dataset.db_access import global_session
 
 
-def add_dataset(name, channel, scaling):
+def add_dataset(name, channel, scaling, from_dataset=None, from_training=None):
     dataset = Dataset(
         name=name,
         scaling=scaling,
         channel=channel,
+        from_dataset=from_dataset,
+        from_training=from_training,
     )
     global_session.add(dataset)
     return dataset

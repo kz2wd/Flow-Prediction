@@ -3,7 +3,7 @@ from dash import dcc, html, Input, State, Output
 
 from space_exploration.beans.training_bean import Training
 from space_exploration.dataset.db_access import global_session
-from space_exploration.run_training import ModelTraining
+from space_exploration.training.training import ModelTraining
 from web_grapher.trainings.training_visualizations import TRAINING_VISUALIZATIONS
 
 

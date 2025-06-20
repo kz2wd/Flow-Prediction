@@ -1,6 +1,6 @@
 from strenum import StrEnum
 
-class BenchmarkKeys(StrEnum):
+class DatasetBenchmarkKeys(StrEnum):
     VELOCITY_MEAN_ALONG_Y = "velocity_mean_along_y"
     VELOCITY_STD_ALONG_Y = "velocity_std_along_y"
     FLUCTUATION_ALONG_Y = "fluctuation_along_y"
