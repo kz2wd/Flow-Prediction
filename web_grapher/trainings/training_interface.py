@@ -28,8 +28,8 @@ def get_training_tab(app):
                       html.Label("Select trainings:"),
                       dcc.Dropdown(
                           id="training-dropdown",
-                          options=[{"label": tr.name, "value": tr.bean.id} for tr in trainings],
-                          multi=True
+                          options=[{"label": tr.bean.run_id, "value": tr.bean.id} for tr in trainings],
+                          multi =True
                       ),
                       html.Label("Select Visualization:"),
                       dcc.Dropdown(

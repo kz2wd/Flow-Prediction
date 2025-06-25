@@ -237,7 +237,7 @@ class ModelTraining:
         if self.bean is None:
             raise Exception("No existing training record!")
 
-        state_dict_path = f"final_model/{self.best_ckpt}"
+        state_dict_path = "final_model/checkpoint_best.pt"
 
         print(f"⌛ Fetching remote artifact at {str(state_dict_path)}")
 

@@ -65,7 +65,6 @@ class TrainingBenchmark:
 
         benchmark_dict = {
             TrainingBenchmarkKeys.PAPER_LIKE_MSE_ALONG_Y: mse,
-            TrainingBenchmarkKeys.SAMPLE: prediction[0],
         }
 
         components = ['u', 'v', 'w']
