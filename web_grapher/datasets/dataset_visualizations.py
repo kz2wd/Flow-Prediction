@@ -40,6 +40,19 @@ def get_combined_df(kind):
 def get_datasets(ids):
     return global_session.query(Dataset).filter(Dataset.id.in_(ids)).all()
 
+def set_legend(fig):
+    fig.update_layout(
+        legend=dict(
+            orientation="h",  # horizontal legend
+            yanchor="top",
+            y=-0.2,  # adjust based on your layout (negative to move it below)
+            xanchor="center",
+            x=0.5
+        ),
+        margin=dict(b=100)  # increase bottom margin to avoid clipping
+    )
+
+
 @visualization("Compare Dataset Sizes")
 def compare_dataset_sizes(ids):
     datasets = get_datasets(ids)
@@ -57,6 +70,7 @@ def u_velo_along_y(ids):
 
     fig = px.line(filtered_df, x="y_dimension", y=DatasetBenchmarkKeys.VELOCITY_MEAN_ALONG_Y, color="name", log_x=True)
     fig.update_layout(title="Dataset Velocities")
+    set_legend(fig)
     return fig
 
 
@@ -67,6 +81,7 @@ def stds(ids):
 
     fig = px.line(filtered_df, x="y_dimension", y=DatasetBenchmarkKeys.VELOCITY_STD_ALONG_Y, color="name", line_dash="component")
     fig.update_layout(title="velocity_std")
+    set_legend(fig)
     return fig
 
 
@@ -78,6 +93,7 @@ def squared_velocity_mean(ids):
 
     fig = px.line(filtered_df, x="y_dimension", y=DatasetBenchmarkKeys.SQUARED_VELOCITY_MEAN_ALONG_Y, color="name", line_dash="component", log_x=True)
     fig.update_layout(title="squared_velocity_mean")
+    set_legend(fig)
     return fig
 
 
@@ -88,6 +104,7 @@ def reynold_uv(ids):
 
     fig = px.line(filtered_df, x="y_dimension", y=DatasetBenchmarkKeys.REYNOLDS_UV, color="name")
     fig.update_layout(title="reynold uv")
+    set_legend(fig)
     return fig
 
 # @visualization("histogram")
