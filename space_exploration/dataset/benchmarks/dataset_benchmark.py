@@ -40,12 +40,11 @@ class DatasetBenchmark:
         print("Computing Benchmark Data")
 
         # ds shape: (Batch, velocity component, x, y, z)
-        ds = self.dataset.y * self.dataset.scaling
-
-        self._compute_intern(ds, self.dataset.channel)
-
+        self._compute_intern(self.dataset.y, self.dataset.channel)
 
     def _compute_intern(self, ds, channel):
+        ds = ds * self.dataset.scaling
+
         def run_benchmark(internal_ds):
             velocity_mean = internal_ds.mean(axis=(0, 2, 4)).compute()  # (3, y)
             velocity_std = internal_ds.std(axis=(2, 4)).mean(axis=0).compute()  # (3, y)

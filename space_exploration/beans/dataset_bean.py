@@ -28,7 +28,7 @@ class Dataset(Base):
     channel_id = Column(Integer, ForeignKey('channels.id'))
     channel: Mapped[Channel] = relationship("Channel")
     from_dataset_id = Column(Integer, ForeignKey('datasets.id'))
-    from_dataset: Mapped[Dataset] = relationship("Dataset")
+    from_dataset: Mapped[Dataset] = relationship("Dataset", remote_side=[id], foreign_keys=[from_dataset_id])
     from_training_id = Column(Integer, ForeignKey('trainings.id'))
     from_training: Mapped[Training] = relationship("Training", foreign_keys=[from_training_id])
 
@@ -50,6 +50,8 @@ class Dataset(Base):
 
     @property
     def is_generated(self):
+        print(self.from_dataset)
+        print(self.from_training)
         return self.from_dataset is not None and self.from_training is not None
 
     @property
@@ -122,4 +124,9 @@ class Dataset(Base):
             print(*(dataset.name for dataset in global_session.query(Dataset).all()))
             raise Exception(f"Dataset [{name}] not found <UNK>")
         return result
+
+    def get_transform_data_path(self, transform_name, target):
+        if self.is_generated:
+            return self.from_dataset.get_transform_data_path(transform_name, target)
+        return f"s3://benchmarks/transforms/{self.name}/{transform_name}-{target}.zarr"
 

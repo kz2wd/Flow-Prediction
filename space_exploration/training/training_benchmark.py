@@ -45,7 +45,7 @@ class TrainingBenchmark:
             self.training.model.prediction_sub_space.y[1],
             self.training.x_transform_ref.transformation,
             self.training.y_transform_ref.transformation,
-            250
+            # 250
         )
         ds_loader = prepare_dataset(ds, 1)
         prediction = get_prediction_ds(self.training.model, ds_loader)
@@ -119,7 +119,7 @@ class TrainingBenchmark:
 
         dataset_name = f"prediction-{self.training.bean.run_id}"
         try:
-            dataset = add_dataset(
+            generated_dataset = add_dataset(
                 name=dataset_name,
                 channel=self.training.bean.dataset.channel,
                 scaling=self.training.bean.dataset.scaling,
@@ -129,13 +129,13 @@ class TrainingBenchmark:
             global_session.commit()
         except Exception:
             global_session.rollback()
-            dataset = Dataset.get_dataset_or_fail(dataset_name)
+            generated_dataset = Dataset.get_dataset_or_fail(dataset_name)
 
-        dataset_benchmark = dataset.benchmark
+        dataset_benchmark = generated_dataset.benchmark
 
-        real_scale_prediction = self.training.y_transform_ref.transformation().from_training(prediction)
+        real_scale_prediction = self.training.y_transform_ref.transformation(generated_dataset, "Y").from_training(prediction)
 
-        dataset_benchmark._compute_intern(real_scale_prediction, dataset.channel)
+        dataset_benchmark._compute_intern(real_scale_prediction, generated_dataset.channel)
 
         self.training.bean.benchmarked = True
         global_session.commit()

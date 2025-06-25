@@ -20,7 +20,10 @@ def get_s3_map(file_path):
 
 
 def get_ds(file_path):
-    return da.from_zarr(get_s3_map(file_path))
+    try:
+        return da.from_zarr(get_s3_map(file_path))
+    except TypeError:
+        return None
 
 
 def store_ds(ds, file_path):

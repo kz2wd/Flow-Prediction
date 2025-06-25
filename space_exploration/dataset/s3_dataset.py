@@ -10,8 +10,8 @@ from space_exploration.dataset.transforms.general.default_unchanged import Defau
 class S3Dataset(Dataset):
     def __init__(self, ref_bean, x_ds, y_ds, max_y, XTransform: Type = DefaultUnchanged, YTransform: Type = DefaultUnchanged):
         self.ref_bean = ref_bean
-        self.x_transform = XTransform()
-        self.y_transform = YTransform()
+        self.x_transform = XTransform(self.ref_bean, "X")
+        self.y_transform = YTransform(self.ref_bean, "Y")
 
         self.y_ds = self.y_transform.to_training(y_ds)
         print("⌛ Initializing Dataset...")
