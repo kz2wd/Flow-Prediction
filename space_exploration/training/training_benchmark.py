@@ -117,7 +117,7 @@ class TrainingBenchmark:
         print(f"Generating prediction dataset benchmark")
 
 
-        dataset_name = f"prediction-{self.training.bean.run_id}"
+        dataset_name = f"prediction-{str(self.training.bean.run_id)[:8]}"
         try:
             generated_dataset = add_dataset(
                 name=dataset_name,

@@ -50,8 +50,6 @@ class Dataset(Base):
 
     @property
     def is_generated(self):
-        print(self.from_dataset)
-        print(self.from_training)
         return self.from_dataset is not None and self.from_training is not None
 
     @property
