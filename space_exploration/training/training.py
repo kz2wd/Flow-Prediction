@@ -47,7 +47,7 @@ class ModelTraining:
 
         self.name = name
         if self.name is None:
-            self.name = f"{model_name}_{dataset_name}_{data_amount}_{batch_size}"
+            self.name = f"{self.model_name}_{self.dataset_name}_{self.data_amount}_{self.batch_size}"
 
         # === ARTIFACT MANAGEMENT ===
         self.artifact_dir = Path(FolderManager.artifact_backup_folder(self.model))

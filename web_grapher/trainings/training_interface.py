@@ -9,7 +9,7 @@ from web_grapher.trainings.training_visualizations import TRAINING_VISUALIZATION
 
 def get_training_tab(app):
 
-    trainings = [ModelTraining.from_training_bean(tr) for tr in global_session.query(Training).all()]
+    trainings = [ModelTraining.from_training_bean(tr) for tr in global_session.query(Training).filter(Training.benchmarked == True).all()]
 
     @app.callback(
         Output("training-plot-output", "figure"),

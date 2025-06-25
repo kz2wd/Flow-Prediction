@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, String
+from sqlalchemy import Column, Integer, ForeignKey, String, Boolean
 from sqlalchemy.orm import relationship
 
 from space_exploration.beans.alchemy_base import Base
@@ -18,6 +18,7 @@ class Training(Base):
     parent_id = Column(Integer, ForeignKey('trainings.id'))
     parent = relationship('Training', remote_side=[id])
     name = Column(String)
+    benchmarked = Column(Boolean, default=False)
 
     @staticmethod
     def get_training_or_fail(run_id):

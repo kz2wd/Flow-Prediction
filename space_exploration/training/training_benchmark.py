@@ -137,6 +137,9 @@ class TrainingBenchmark:
 
         dataset_benchmark._compute_intern(real_scale_prediction, dataset.channel)
 
+        self.training.bean.benchmarked = True
+        global_session.commit()
+
         print(f"Saved benchmarks for {self.training.name}")
 
 

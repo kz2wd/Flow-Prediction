@@ -4,6 +4,7 @@ import plotly.express as px
 from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.dataset import db_access
 from space_exploration.dataset.benchmarks.benchmark_keys import DatasetBenchmarkKeys
+from space_exploration.dataset.db_access import global_session
 
 DATASET_VISUALIZATIONS = {}
 
@@ -19,7 +20,7 @@ benchmarks_df = {}
 
 def reload_combined_df():
     global benchmarks_df
-    dss = db_access.get_session().query(Dataset).all()
+    dss = global_session.query(Dataset).all()
     benchmarks = [ds.benchmark for ds in dss if ds.benchmark.loaded]
     if len(benchmarks) == 0:
         return
@@ -37,7 +38,7 @@ def get_combined_df(kind):
     return benchmarks_df[kind]
 
 def get_datasets(ids):
-    return db_access.get_session().query(Dataset).filter(Dataset.id.in_(ids)).all()
+    return global_session.query(Dataset).filter(Dataset.id.in_(ids)).all()
 
 @visualization("Compare Dataset Sizes")
 def compare_dataset_sizes(ids):

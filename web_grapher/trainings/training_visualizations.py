@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 from space_exploration.beans.training_bean import Training
 from space_exploration.dataset.db_access import global_session
@@ -55,5 +56,11 @@ def mse_along_y(ids):
     filtered_df = filtered_df[filtered_df["component"] == "u"]
     fig = px.line(filtered_df, x="y_dimension", y=TrainingBenchmarkKeys.PAPER_LIKE_MSE_ALONG_Y, color="name", log_x=True)
     fig.update_layout(title="Dataset Velocities")
+    fig.add_trace(go.Scatter(
+        x=[15, 30, 50, 100],
+        y=[0.043, 0.137, 0.306, 0.639],
+        visible='legendonly',
+        name="Paper U",
+    ))
     return fig
 
