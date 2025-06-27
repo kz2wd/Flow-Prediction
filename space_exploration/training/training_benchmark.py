@@ -63,8 +63,15 @@ class TrainingBenchmark:
 
         mse = ((target - prediction) ** 2).mean(axis=(0, 2, 4))
 
+        transform = self.training.y_transform_ref.transformation(self.training.dataset, "Y")
+
+        real_scale_target = transform.from_training(target)
+        real_scale_prediction = transform.from_training(prediction)
+        real_scale_mse = ((real_scale_target - real_scale_prediction) ** 2).mean(axis=(0, 2, 4))
+
         benchmark_dict = {
             TrainingBenchmarkKeys.PAPER_LIKE_MSE_ALONG_Y: mse,
+            TrainingBenchmarkKeys.REAL_MSE_ALONG_Y: real_scale_mse,
         }
 
         components = ['u', 'v', 'w']
@@ -76,6 +83,7 @@ class TrainingBenchmark:
         ]
         component_aware_benchmarks = [
             TrainingBenchmarkKeys.PAPER_LIKE_MSE_ALONG_Y,
+            TrainingBenchmarkKeys.REAL_MSE_ALONG_Y,
         ]
 
         def not_aware(benchmark_name):

@@ -19,6 +19,20 @@ def visualization(name):
 trainings = {}
 trainings_df = {}
 
+def set_legend(fig):
+    fig.update_layout(
+        legend=dict(
+            orientation="h",  # horizontal legend
+            yanchor="top",
+            y=-0.2,  # adjust based on your layout (negative to move it below)
+            xanchor="center",
+            x=0.5
+        ),
+        margin=dict(b=100)  # increase bottom margin to avoid clipping
+    )
+
+
+
 def reload_trainings():
     global trainings
     global trainings_df
@@ -46,7 +60,8 @@ def mse_along_y(ids):
     filtered_df = combined_df[combined_df['training_id'].isin(ids)]
     #
     fig = px.line(filtered_df, x="y_dimension", y=TrainingBenchmarkKeys.PAPER_LIKE_MSE_ALONG_Y, color="name", log_x=True, line_dash="component")
-    fig.update_layout(title="Dataset Velocities")
+    fig.update_layout(title="Training MSE Along Y")
+    set_legend(fig)
     return fig
 
 @visualization("U MSE Along Y")
@@ -55,12 +70,24 @@ def mse_along_y(ids):
     filtered_df = combined_df[combined_df['training_id'].isin(ids)]
     filtered_df = filtered_df[filtered_df["component"] == "u"]
     fig = px.line(filtered_df, x="y_dimension", y=TrainingBenchmarkKeys.PAPER_LIKE_MSE_ALONG_Y, color="name", log_x=True)
-    fig.update_layout(title="Dataset Velocities")
+    fig.update_layout(title="Training U MSE Along Y")
     fig.add_trace(go.Scatter(
         x=[15, 30, 50, 100],
         y=[0.043, 0.137, 0.306, 0.639],
         visible='legendonly',
         name="Paper U",
     ))
+    set_legend(fig)
     return fig
+
+@visualization("Real U MSE Along Y")
+def mse_along_y(ids):
+    combined_df = trainings_df[TrainingBenchmarkKeys.REAL_MSE_ALONG_Y.value]
+    filtered_df = combined_df[combined_df['training_id'].isin(ids)]
+    filtered_df = filtered_df[filtered_df["component"] == "u"]
+    fig = px.line(filtered_df, x="y_dimension", y=TrainingBenchmarkKeys.REAL_MSE_ALONG_Y, color="name", log_x=True)
+    fig.update_layout(title="Real Scale Training MSE Along Y")
+    set_legend(fig)
+    return fig
+
 
