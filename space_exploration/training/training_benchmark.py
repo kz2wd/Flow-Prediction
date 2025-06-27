@@ -45,7 +45,7 @@ class TrainingBenchmark:
             self.training.model.prediction_sub_space.y[1],
             self.training.x_transform_ref.transformation,
             self.training.y_transform_ref.transformation,
-            # 250
+            250
         )
         ds_loader = prepare_dataset(ds, 1)
         prediction = get_prediction_ds(self.training.model, ds_loader)
@@ -61,17 +61,20 @@ class TrainingBenchmark:
 
         target = da.concatenate([y.cpu().numpy() for (x, y) in iter(ds_loader)], axis=0)
 
-        mse = ((target - prediction) ** 2).mean(axis=(0, 2, 4))
+        print(f"target mean: {target.mean().compute()}")
+        print(f"prediction mean {prediction.mean().compute()}")
 
-        transform = self.training.y_transform_ref.transformation(self.training.dataset, "Y")
+        mse = ((target - prediction) ** 2).mean(axis=(0, 2, 4)).compute()
 
-        real_scale_target = transform.from_training(target)
-        real_scale_prediction = transform.from_training(prediction)
-        real_scale_mse = ((real_scale_target - real_scale_prediction) ** 2).mean(axis=(0, 2, 4))
+        # transform = self.training.y_transform_ref.transformation(self.training.dataset, "Y")
+        #
+        # real_scale_target = transform.from_training(target)
+        # real_scale_prediction = transform.from_training(prediction)
+        # real_scale_mse = ((real_scale_target - real_scale_prediction) ** 2).mean(axis=(0, 2, 4)).compute()
 
         benchmark_dict = {
             TrainingBenchmarkKeys.PAPER_LIKE_MSE_ALONG_Y: mse,
-            TrainingBenchmarkKeys.REAL_MSE_ALONG_Y: real_scale_mse,
+            # TrainingBenchmarkKeys.REAL_MSE_ALONG_Y: real_scale_mse,
         }
 
         components = ['u', 'v', 'w']
