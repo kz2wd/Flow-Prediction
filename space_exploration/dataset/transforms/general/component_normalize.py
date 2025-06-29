@@ -43,8 +43,9 @@ class ComponentNormalize(TransformBase):
 
         mean = mean[None, :, None, None, None]
         std = std[None, :, None, None, None]
+        print(f"using from training with mean: {mean.mean().compute()} and std {std.mean().compute()}")
 
-        return (ds - mean) / std
+        return (ds * std) + mean
 
     def to_training(self, ds):
         mean, std = self.mean_and_std
