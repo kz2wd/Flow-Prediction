@@ -31,11 +31,12 @@ class ComponentNormalize(TransformBase):
                 stds = da.where(stds == 0, 1e-8, stds)  # avoid division by zero.compute()
 
             mean_and_std = da.stack([means, stds])
-            print(f"Saving freshly computed mean and std")
+            print(f"Saving freshly computed mean and std: {mean_and_std.compute()}")
             s3_access.store_ds(mean_and_std, dataset.get_transform_data_path(self.name, self.target))
 
         self.mean_and_std = mean_and_std
-
+        mean, std = self.mean_and_std.compute()
+        print(f"loaded mean: {mean}, std: {std}")
 
     def from_training(self, ds):
 
@@ -43,12 +44,22 @@ class ComponentNormalize(TransformBase):
 
         mean = mean[None, :, None, None, None]
         std = std[None, :, None, None, None]
-        print(f"using from training with mean: {mean.mean().compute()} and std {std.mean().compute()}")
+        print(f"using from training with mean: {mean.compute()} and std {std.compute()}")
 
         return (ds * std) + mean
 
     def to_training(self, ds):
         mean, std = self.mean_and_std
+
+        emp_mean = ds.mean(axis=(0, 2, 3, 4)).compute()
+        mean_diff = sum(emp_mean - mean).compute()
+
+        emp_std = ds.std(axis=(0, 2, 3, 4)).compute()
+        std_diff = sum(emp_std - std).compute()
+
+        print(f"found emp mean: {emp_mean}, emp std: {emp_std}")
+
+        print(f"mean diff {mean_diff}, std diff {std_diff}")
 
         mean = mean[None, :, None, None, None]
         std = std[None, :, None, None, None]
