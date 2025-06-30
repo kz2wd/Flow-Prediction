@@ -23,7 +23,10 @@ class ComponentNormalize(TransformBase):
                                 f"[{dataset.get_transform_data_path(self.name, self.target)}]")
 
             print("No mean and std data found, computing them")
-            ds = dataset.y
+            if target == "Y":
+                ds = dataset.y
+            else:
+                ds = dataset.x
             with ProgressBar():
                 means = ds.mean(axis=(0, 2, 3, 4)).compute()
                 stds = ds.std(axis=(0, 2, 3, 4)).compute()
@@ -44,24 +47,12 @@ class ComponentNormalize(TransformBase):
 
         mean = mean[None, :, None, None, None]
         std = std[None, :, None, None, None]
-        print(f"using from training with mean: {mean.compute()} and std {std.compute()}")
 
         return (ds * std) + mean
 
     def to_training(self, ds):
         mean, std = self.mean_and_std
 
-        emp_mean = ds.mean(axis=(0, 2, 3, 4)).compute()
-        mean_diff = sum(emp_mean - mean).compute()
-
-        emp_std = ds.std(axis=(0, 2, 3, 4)).compute()
-        std_diff = sum(emp_std - std).compute()
-
-        print(f"found emp mean: {emp_mean}, emp std: {emp_std}")
-
-        print(f"mean diff {mean_diff}, std diff {std_diff}")
-
         mean = mean[None, :, None, None, None]
         std = std[None, :, None, None, None]
-
         return (ds - mean) / std

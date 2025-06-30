@@ -26,4 +26,4 @@ def unet_sanity_check():
     print(outputs.shape)
 
 if __name__ == '__main__':
-    test()
+    unet_sanity_check()
