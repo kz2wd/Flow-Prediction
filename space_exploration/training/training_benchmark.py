@@ -45,7 +45,7 @@ class TrainingBenchmark:
             self.training.model.prediction_sub_space.y[1],
             self.training.x_transform_ref.transformation,
             self.training.y_transform_ref.transformation,
-            250
+            # 250
         )
         ds_loader = prepare_dataset(ds, 1)
         prediction = get_prediction_ds(self.training.model, ds_loader)

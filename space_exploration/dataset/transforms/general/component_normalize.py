@@ -38,8 +38,6 @@ class ComponentNormalize(TransformBase):
             s3_access.store_ds(mean_and_std, dataset.get_transform_data_path(self.name, self.target))
 
         self.mean_and_std = mean_and_std
-        mean, std = self.mean_and_std.compute()
-        print(f"loaded mean: {mean}, std: {std}")
 
     def from_training(self, ds):
 

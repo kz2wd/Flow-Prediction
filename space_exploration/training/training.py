@@ -224,7 +224,7 @@ class ModelTraining:
             x_transform=str(self.x_transform_ref),
             y_transform=str(self.y_transform_ref),
             run_id=run_id,
-            name=self.name,
+            name=f"{run_id[:80]}-{self.name}",
             parent=self.bean
         )
         global_session.add(training)
@@ -250,7 +250,7 @@ class ModelTraining:
     @staticmethod
     def from_training_bean(bean: Training):
         model_training = ModelTraining(bean.model, bean.dataset.name, bean.x_transform, bean.y_transform,
-                                       bean.batch_size, bean.data_amount, bean=bean)
+                                       bean.batch_size, bean.data_amount, bean=bean, name=bean.name )
         return model_training
 
 
