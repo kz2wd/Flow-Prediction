@@ -15,7 +15,7 @@ from space_exploration.dataset.db_access import global_session
 from space_exploration.dataset.transforms.AllTransforms import TransformationReferences
 from space_exploration.models.AllModels import ModelReferences
 from space_exploration.training.training_benchmark import TrainingBenchmark
-from space_exploration.training.training_utils import get_split_datasets, prepare_dataset, get_prediction_ds, test_gan
+from space_exploration.training.training_utils import get_split_datasets
 
 
 class ModelTraining:
@@ -61,7 +61,7 @@ class ModelTraining:
             run = mlflow.active_run()
             self._record_in_database(run.info.run_id)
 
-            self._prepare_train()
+            self._prepare_datasets()
 
             try:
                 self._internal_train()
@@ -72,10 +72,10 @@ class ModelTraining:
 
             finally:
                 self._upload_best_model()
-                self._test_model()
+                self.model.training_end()
                 self._clean_training()
 
-    def _prepare_train(self):
+    def _prepare_datasets(self):
         y_dim = self.model.prediction_sub_space.y[1]
         ds = self.dataset.get_training_dataset(y_dim, self.x_transform_ref.transformation, self.y_transform_ref.transformation, self.data_amount)
         self.train_ds, self.val_ds, self.test_ds = get_split_datasets(ds, batch_size=4, val_ratio=0.2, test_ratio=0.05,
@@ -87,86 +87,18 @@ class ModelTraining:
         print(f"🔄️ Deleting local backups in [{self.artifact_dir}]")
         shutil.rmtree(self.artifact_dir)
 
-    def _train_one_epoch(self):
-        self.model.generator.train()
-        self.model.discriminator.train()
-        gen_losses, disc_losses = [], []
-
-        for x_target, y_target in tqdm.tqdm(self.train_ds, desc="Training"):
-            x_target, y_target = x_target.to(self.device), y_target.to(self.device)
-
-            # === Generator forward and loss ===
-            y_pred = self.model.generator(x_target)
-            with torch.no_grad():
-                fake_output_for_gen = self.model.discriminator(y_pred)
-            gen_loss = self.model.generator_loss(fake_output_for_gen, y_pred, y_target)
-
-            self.model.generator_optimizer.zero_grad()
-            gen_loss.backward()
-            self.model.generator_optimizer.step()
-
-            # === Discriminator forward and loss ===
-            real_output = self.model.discriminator(y_target)
-            fake_output = self.model.discriminator(y_pred.detach())
-            disc_loss = self.model.discriminator_loss(real_output, fake_output)
-
-            self.model.discriminator_optimizer.zero_grad()
-            disc_loss.backward()
-            self.model.discriminator_optimizer.step()
-
-            gen_losses.append(gen_loss.item())
-            disc_losses.append(disc_loss.item())
-
-            if torch.isnan(y_pred).any() or torch.isinf(y_pred).any():
-                print("NaN or Inf detected in generator output!")
-
-        return np.mean(gen_losses), np.mean(disc_losses)
-
-    def _validate(self):
-        self.model.generator.eval()
-        self.model.discriminator.eval()
-        gen_losses, disc_losses = [], []
-
-        with torch.no_grad():
-            for x_target, y_target in tqdm.tqdm(self.val_ds, desc="Validating"):
-                x_target, y_target = x_target.to(self.device), y_target.to(self.device)
-                y_pred = self.model.generator(x_target)
-                real_output = self.model.discriminator(y_target)
-                fake_output = self.model.discriminator(y_pred)
-
-                gen_loss = self.model.generator_loss(fake_output, y_pred, y_target)
-                disc_loss = self.model.discriminator_loss(real_output, fake_output)
-
-                gen_losses.append(gen_loss.item())
-                disc_losses.append(disc_loss.item())
-
-        return np.mean(gen_losses), np.mean(disc_losses)
-
-    def _save_model(self, epoch, ckpt):
-        torch.save({
-            'epoch': epoch,
-            'generator_state_dict': self.model.generator.state_dict(),
-            'discriminator_state_dict': self.model.discriminator.state_dict(),
-            'gen_optimizer_state_dict': self.model.generator_optimizer.state_dict(),
-            'disc_optimizer_state_dict': self.model.discriminator_optimizer.state_dict()
-        }, ckpt)
 
     def _upload_best_model(self):
         print("🕓 Uploading best model")
         mlflow.log_artifact(str(self.best_ckpt), artifact_path="final_model")
 
     def _internal_train(self):
-        # === OPTIMIZERS AND LR SCHEDULERS ===
-        self.model.generator_optimizer = torch.optim.Adam(self.model.generator.parameters(), lr=1e-4)
-        self.model.discriminator_optimizer = torch.optim.Adam(self.model.discriminator.parameters(), lr=1e-4)
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.model.generator_optimizer, mode='min', factor=0.5, patience=2
-        )
+
+        self.model.prepare_train(self.train_ds, self.val_ds, self.test_ds)
 
         # === EARLY STOPPING SETUP ===
         best_val_loss = float('inf')
         patience_counter = 0
-
 
         mlflow.set_tag("model_type", "GAN")
         mlflow.log_params({
@@ -177,36 +109,16 @@ class ModelTraining:
         start_time = time.time()
         for epoch in range(1, self.max_epochs + 1):
             print(f"\nEpoch {epoch}/{self.max_epochs}")
-            train_gen_loss, train_disc_loss = self._train_one_epoch()
-            val_gen_loss, val_disc_loss = self._validate()
-
-            elapsed = time.time() - start_time
-
-            # Log metrics
-            mlflow.log_metrics({
-                "train_gen_loss": train_gen_loss,
-                "train_disc_loss": train_disc_loss,
-                "val_gen_loss": val_gen_loss,
-                "val_disc_loss": val_disc_loss
-            }, step=epoch)
-
-            print(f"[Epoch {epoch}] "
-                  f"train_gen_loss={train_gen_loss:.4f}, "
-                  f"train_disc_loss={train_disc_loss:.4f}, "
-                  f"val_gen_loss={val_gen_loss:.4f}, "
-                  f"val_disc_loss={val_disc_loss:.4f}, "
-                  f"time={elapsed:.2f}s")
-
-            lr_scheduler.step(val_gen_loss)
+            val_gen_loss = self.model.train_cycle(epoch, start_time)
 
             if epoch % self.saving_freq == 0:
-                self._save_model(epoch, self.latest_ckpt)
+                self.model.save(epoch, self.latest_ckpt)
                 print(f"Saving checkpoint for epoch {epoch}...")
 
             if val_gen_loss < best_val_loss:
                 best_val_loss = val_gen_loss
                 patience_counter = 0
-                self._save_model(epoch, self.best_ckpt)
+                self.model.save(epoch, self.best_ckpt)
                 print(f"Saving best model at epoch {epoch}...")
             else:
                 patience_counter += 1
@@ -259,10 +171,6 @@ class ModelTraining:
 
     def get_benchmark(self, benchmark_ds_name="re200-sr1etot"):
         return TrainingBenchmark(self, benchmark_ds_name)
-
-    def _test_model(self):
-        mse = test_gan(self.model, self.test_ds)
-        print(f"MSE: {mse}")
 
     def change_dataset(self, new_dataset_name, new_data_amount=-1):
         self.dataset_name = new_dataset_name

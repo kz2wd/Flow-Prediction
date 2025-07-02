@@ -8,10 +8,9 @@ from space_exploration.beans.database_add import add_dataset
 from space_exploration.beans.dataset_bean import Dataset
 from space_exploration.dataset import s3_access
 from space_exploration.dataset.db_access import global_session
-from space_exploration.dataset.transforms.AllTransforms import TransformationReferences
 
 from space_exploration.training.training_benchmark_keys import TrainingBenchmarkKeys
-from space_exploration.training.training_utils import prepare_dataset, get_prediction_ds
+from space_exploration.training.training_utils import prepare_dataset
 
 if TYPE_CHECKING:
     from space_exploration.training.training import ModelTraining
@@ -48,7 +47,7 @@ class TrainingBenchmark:
             # 250
         )
         ds_loader = prepare_dataset(ds, 1)
-        prediction = get_prediction_ds(self.training.model, ds_loader)
+        prediction = self.training.model.predict(ds_loader)
 
 
         print("Computing Benchmark Data")

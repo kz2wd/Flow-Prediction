@@ -1,17 +1,5 @@
-import torch
-import numpy as np
-import time
-import shutil
-import tqdm
-import mlflow
-from pathlib import Path
-
-import dask.array as da
-
-from space_exploration.FolderManager import FolderManager
 
 from torch.utils.data import DataLoader, random_split
-import torch
 
 
 def get_split_datasets(dataset, batch_size=32, val_ratio=0.1, test_ratio=0.1, num_workers=4, device=None):
@@ -48,45 +36,3 @@ def prepare_dataset(dataset, batch_size, num_workers=4, device=None):
         dataset, batch_size=batch_size, shuffle=False,
         num_workers=num_workers, pin_memory=pin_memory, persistent_workers=True
     )
-
-
-import torch.nn.functional as F
-
-def test_gan(model, dataset_test, log_mlflow=True):
-    model.generator.eval()
-
-    mse_losses = []
-
-    with torch.no_grad():
-        for x_target, y_target in tqdm.tqdm(dataset_test, desc="Testing"):
-            x_target, y_target = x_target.to(model.device), y_target.to(model.device)
-            y_pred = model.generator(x_target)
-            mse_loss = F.mse_loss(y_pred, y_target).item()
-            mse_losses.append(mse_loss)
-
-    mean_mse = np.mean(mse_losses)
-    print(f"[Test MSE] {mean_mse:.6f}")
-    if log_mlflow:
-        mlflow.log_metric("test_mse", float(mean_mse))
-    return mean_mse
-
-
-def get_prediction_ds(model, dataset):
-    model.generator.eval()
-
-    predictions = []
-    with torch.no_grad():
-        for x_target, y_target in tqdm.tqdm(dataset, desc="Testing"):
-            x_target, y_target = x_target.to(model.device), y_target.to(model.device)
-            y_pred = model.generator(x_target)
-            predictions.append(y_pred.cpu().numpy())
-
-    ds = da.concatenate(predictions, axis=0)
-    return ds.rechunk()
-
-
-def gen_output(model, x):
-    with torch.no_grad():
-        x = x.to(model.device)
-        y = model.generator(x)
-    return y
