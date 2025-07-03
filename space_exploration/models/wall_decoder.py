@@ -6,13 +6,13 @@ import torch
 import tqdm
 import torch.nn.functional as F
 
-from space_exploration.beans.prediction_subspace_bean import PredictionSubSpace
 from space_exploration.models.model_base import PredictionModel
 
 import dask.array as da
 from torch import nn
 
 from space_exploration.models.utils import ResBlockGen, UpSamplingBlock
+from space_exploration.simulation_channel.PredictionSubSpace import PredictionSubSpace
 
 
 class Generator(nn.Module):
@@ -68,8 +68,9 @@ class WallDecoder(PredictionModel):
     def __init__(self, name, prediction_sub_space: PredictionSubSpace):
         super().__init__(name, prediction_sub_space)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.decoder = None
-        self.loss = None
+        self.decoder = get_decoder(prediction_sub_space.y[1])
+        self.decoder.to(self.device)
+        self.loss = loss_function
 
     def _train_one_epoch(self):
         self.decoder.train()
@@ -177,3 +178,4 @@ class WallDecoder(PredictionModel):
 
         ds = da.concatenate(predictions, axis=0)
         return ds.rechunk()
+

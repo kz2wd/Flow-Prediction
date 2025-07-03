@@ -25,5 +25,11 @@ def unet_sanity_check():
     outputs = model(X)
     print(outputs.shape)
 
+
+def wall_decoder_check():
+    training = ModelTraining("WALL_DECODER", "re200-sr05etot", "COMPONENT_NORMALIZE", "Y_ALONG_COMPONENT_NORMALIZE", 4, data_amount=500, name="wall decoder test")
+    training.run()
+
 if __name__ == '__main__':
-    test()
+    # unet_sanity_check()
+    wall_decoder_check()

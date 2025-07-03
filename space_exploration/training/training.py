@@ -69,6 +69,9 @@ class ModelTraining:
                 print(f"🚩 Stopping training due to user request")
             except Exception as e:
                 print(f"Encountered exception while training: {e}")
+                import traceback
+                traceback.print_exc()
+
 
             finally:
                 self._upload_best_model()
