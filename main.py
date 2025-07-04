@@ -27,7 +27,7 @@ def unet_sanity_check():
 
 
 def wall_decoder_check():
-    training = ModelTraining("WALL_DECODER", "re200-sr05etot", "COMPONENT_NORMALIZE", "Y_ALONG_COMPONENT_NORMALIZE", 4, data_amount=500, name="wall decoder test")
+    training = ModelTraining("WALL_DECODER", "re200-sr05etot", "COMPONENT_NORMALIZE", "Y_ALONG_COMPONENT_NORMALIZE", 4, name="wall decoder only")
     training.run()
 
 if __name__ == '__main__':

@@ -70,6 +70,7 @@ class WallDecoder(PredictionModel):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.decoder = get_decoder(prediction_sub_space.y[1])
         self.decoder.to(self.device)
+        self.optimizer = torch.optim.Adam(self.decoder.parameters(), lr=1e-4)
         self.loss = loss_function
 
     def _train_one_epoch(self):
@@ -148,7 +149,7 @@ class WallDecoder(PredictionModel):
         self.train_ds = train_ds
         self.val_ds = val_ds
         self.test_ds = test_ds
-        self.optimizer = torch.optim.Adam(self.decoder.parameters(), lr=1e-4)
+
         self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, mode='min', factor=0.5, patience=2
         )

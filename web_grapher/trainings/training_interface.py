@@ -6,10 +6,15 @@ from space_exploration.dataset.db_access import global_session
 from space_exploration.training.training import ModelTraining
 from web_grapher.trainings.training_visualizations import TRAINING_VISUALIZATIONS
 
+trainings = None
+
+def get_training():
+    return [ModelTraining.from_training_bean(tr) for tr in
+                 global_session.query(Training).filter(Training.benchmarked == True).all()]
 
 def get_training_tab(app):
-
-    trainings = [ModelTraining.from_training_bean(tr) for tr in global_session.query(Training).filter(Training.benchmarked == True).all()]
+    global trainings
+    trainings = get_training()
 
     @app.callback(
         Output("training-plot-output", "figure"),
@@ -22,6 +27,21 @@ def get_training_tab(app):
             return go.Figure()
         fig = TRAINING_VISUALIZATIONS[viz_name](selected_ids)
         return fig
+
+    @app.callback(
+        Output("training-dropdown", "options"),
+        Input("reload-training-btn", "n_clicks"),
+
+    )
+    def reload_data(n_clicks):
+        global trainings
+        trainings = get_training()
+        # for tr in trainings:
+        #     tr.
+        #
+        # reload_combined_df()
+        #
+        # return [{"label": ds.name, "value": ds.id} for ds in datasets]
 
     tab = dcc.Tab(label="Trainings",
                   children=[
