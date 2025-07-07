@@ -1,4 +1,6 @@
 from enum import Enum
+
+from space_exploration.models.UNet import SimpleUNet
 from space_exploration.models.implementations.A import A as ModelA
 from space_exploration.models.implementations.C import C as ModelC
 from space_exploration.models.wall_decoder import WallDecoder
@@ -20,3 +22,4 @@ class ModelReferences(ModelEnumBase):
     A = ("A", ModelA)
     C = ("C", ModelC)
     WALL_DECODER = ("WALL_DECODER", lambda: WallDecoder("wall_decoder", PredictionSubSpace(y_end=64)))
+    SIMPLE_UNET = ("SIMPLE_UNET", SimpleUNet)
