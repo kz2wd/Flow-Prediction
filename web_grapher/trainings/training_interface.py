@@ -36,12 +36,7 @@ def get_training_tab(app):
     def reload_data(n_clicks):
         global trainings
         trainings = get_training()
-        # for tr in trainings:
-        #     tr.
-        #
-        # reload_combined_df()
-        #
-        # return [{"label": ds.name, "value": ds.id} for ds in datasets]
+        return [{"label": str(tr.bean.run_id)[:8], "value": tr.bean.id} for tr in trainings]
 
     tab = dcc.Tab(label="Trainings",
                   children=[
@@ -59,6 +54,7 @@ def get_training_tab(app):
                       ),
 
                       html.Button("Generate Graph", id="training-plot-btn", className="btn btn-secondary"),
+                      html.Button("Reload data", id="reload-training-btn", className="btn btn-secondary"),
                       dcc.Graph(id="training-plot-output")
                   ]
               )
