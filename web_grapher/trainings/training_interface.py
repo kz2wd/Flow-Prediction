@@ -4,7 +4,7 @@ from dash import dcc, html, Input, State, Output
 from space_exploration.beans.training_bean import Training
 from space_exploration.dataset.db_access import global_session
 from space_exploration.training.training import ModelTraining
-from web_grapher.trainings.training_visualizations import TRAINING_VISUALIZATIONS
+from web_grapher.trainings.training_visualizations import TRAINING_VISUALIZATIONS, reload_trainings
 
 trainings = None
 
@@ -36,6 +36,7 @@ def get_training_tab(app):
     def reload_data(n_clicks):
         global trainings
         trainings = get_training()
+        reload_trainings()
         return [{"label": str(tr.bean.run_id)[:8], "value": tr.bean.id} for tr in trainings]
 
     tab = dcc.Tab(label="Trainings",

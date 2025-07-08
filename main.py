@@ -27,8 +27,8 @@ def unet_sanity_check():
 
 
 def unet_train_test():
-    training = ModelTraining("SIMPLE_UNET", "re200-sr05etot", "COMPONENT_NORMALIZE", "Y_ALONG_COMPONENT_NORMALIZE", 4,
-                             name="Unet test", data_amount=500)
+    training = ModelTraining("SIMPLE_UNET", "re200-sr05etot", "UNET_ADAPTER64", "Y_ALONG_COMPONENT_NORMALIZE", 8,
+                             name="Unet simple")
     training.run()
 
 def wall_decoder_check():
@@ -48,7 +48,7 @@ def tune_discri():
     training.run()
 
 if __name__ == '__main__':
-    tune_discri()
+    # tune_discri()
     # unet_sanity_check()
-    # unet_train_test()
+    unet_train_test()
     # wall_decoder_check()
