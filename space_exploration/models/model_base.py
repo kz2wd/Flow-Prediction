@@ -9,7 +9,7 @@ class PredictionModel(ABC):
         self.name = name
 
     @abstractmethod
-    def train_cycle(self, epoch, start_time):
+    def train_cycle(self, epoch, start_time, profiler=None):
         pass
 
     @abstractmethod

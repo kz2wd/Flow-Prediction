@@ -79,7 +79,8 @@ class GAN3D(PredictionModel):
         state_dict = torch.load(local_model_path, map_location="cuda")
         self.load(state_dict)
 
-    def _train_one_epoch(self):
+    def _train_one_epoch(self, profiler=None):
+
         self.generator.train()
         self.discriminator.train()
         gen_losses, disc_losses = [], []
@@ -112,6 +113,9 @@ class GAN3D(PredictionModel):
             if torch.isnan(y_pred).any() or torch.isinf(y_pred).any():
                 print("NaN or Inf detected in generator output!")
 
+            if profiler is not None:
+                profiler.step()
+
         return np.mean(gen_losses), np.mean(disc_losses)
 
     def _validate(self):
@@ -134,9 +138,9 @@ class GAN3D(PredictionModel):
 
         return np.mean(gen_losses), np.mean(disc_losses)
 
-    def train_cycle(self, epoch, start_time):
+    def train_cycle(self, epoch, start_time, profiler=None):
 
-        train_gen_loss, train_disc_loss = self._train_one_epoch()
+        train_gen_loss, train_disc_loss = self._train_one_epoch(profiler)
         val_gen_loss, val_disc_loss = self._validate()
 
         elapsed = time.time() - start_time

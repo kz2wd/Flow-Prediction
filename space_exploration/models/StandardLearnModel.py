@@ -26,7 +26,7 @@ class StandardLearnModel(PredictionModel):
     def init_components(self):
         pass
 
-    def _train_one_epoch(self):
+    def _train_one_epoch(self, profiler=None):
         self.decoder.train()
         losses = []
 
@@ -46,6 +46,9 @@ class StandardLearnModel(PredictionModel):
             if torch.isnan(y_pred).any() or torch.isinf(y_pred).any():
                 print("NaN or Inf detected in output!")
 
+            if profiler is not None:
+                profiler.step()
+
         return np.mean(losses)
 
     def _validate(self):
@@ -63,9 +66,9 @@ class StandardLearnModel(PredictionModel):
 
         return np.mean(losses)
 
-    def train_cycle(self, epoch, start_time):
+    def train_cycle(self, epoch, start_time, profiler=None):
 
-        train_loss = self._train_one_epoch()
+        train_loss = self._train_one_epoch(profiler)
         val_loss = self._validate()
 
         elapsed = time.time() - start_time

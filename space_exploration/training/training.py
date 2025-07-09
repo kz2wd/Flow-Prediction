@@ -19,7 +19,8 @@ from space_exploration.training.training_utils import get_split_datasets
 
 
 class ModelTraining:
-    def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None, bean=None):
+    def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None, bean=None, profile=False):
+        self.profile = profile
         mlflow.set_tracking_uri("http://localhost:5000")
         self.train_patience = train_patience
         self.saving_freq = saving_freq
@@ -112,7 +113,25 @@ class ModelTraining:
         start_time = time.time()
         for epoch in range(1, self.max_epochs + 1):
             print(f"\nEpoch {epoch}/{self.max_epochs}")
-            val_gen_loss = self.model.train_cycle(epoch, start_time)
+
+            if self.profile:
+                log_dir = f"log_dir/{self.name}"
+                with torch.profiler.profile(
+                        activities=[
+                            torch.profiler.ProfilerActivity.CPU,
+                            torch.profiler.ProfilerActivity.CUDA
+                        ],
+                        schedule=torch.profiler.schedule(wait=0, warmup=5, active=1, repeat=0),
+                        on_trace_ready=torch.profiler.tensorboard_trace_handler(log_dir),
+                        record_shapes=True,
+                        profile_memory=True,
+                        with_stack=True
+                ) as prof:
+                    val_gen_loss = self.model.train_cycle(epoch, start_time, prof)
+                    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=20))
+                    input(f"Done profiling epoch {epoch}, press [Enter] to continue")
+            else:
+                val_gen_loss = self.model.train_cycle(epoch, start_time)
 
             if epoch % self.saving_freq == 0:
                 self.model.save(epoch, self.latest_ckpt)
