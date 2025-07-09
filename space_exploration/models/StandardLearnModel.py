@@ -133,3 +133,6 @@ class StandardLearnModel(PredictionModel):
         ds = da.concatenate(predictions, axis=0)
         return ds.rechunk()
 
+    def get_all_torch_components_named(self):
+        return {"model": self.decoder}
+

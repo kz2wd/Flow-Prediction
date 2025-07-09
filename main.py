@@ -1,3 +1,4 @@
+from space_exploration.models.AllModels import ModelReferences
 from space_exploration.models.UNet import UNet
 from space_exploration.training.training import ModelTraining
 
@@ -47,8 +48,24 @@ def tune_discri():
     training.name = "a67-discri-tuned:1e-2"
     training.run()
 
+def print_stats():
+    models = {
+        "GAN": ModelReferences.A.model(),
+        "Wall Decoder": ModelReferences.WALL_DECODER.model(),
+        "UNet": ModelReferences.SIMPLE_UNET.model(),
+    }
+
+    for name, model in models.items():
+        print(f"model [{name}] statistics")
+        model.print_stats()
+        print()
+
+
+
+
 if __name__ == '__main__':
     # tune_discri()
     # unet_sanity_check()
-    unet_train_test()
+    # unet_train_test()
     # wall_decoder_check()
+    print_stats()

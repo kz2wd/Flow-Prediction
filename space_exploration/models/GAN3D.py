@@ -207,3 +207,9 @@ class GAN3D(PredictionModel):
 
         ds = da.concatenate(predictions, axis=0)
         return ds.rechunk()
+
+    def get_all_torch_components_named(self):
+        return {
+            "generator": self.generator,
+            "discriminator": self.discriminator,
+        }

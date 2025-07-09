@@ -32,5 +32,18 @@ class PredictionModel(ABC):
     def predict(self, dataset):
         pass
 
+    @abstractmethod
+    def get_all_torch_components_named(self):
+        pass
+
+    def print_stats(self):
+        print("name\ttotal parameters\ttraining parameters")
+        for name, component in self.get_all_torch_components_named().items():
+            total_params = sum(p.numel() for p in component.parameters())
+            total_trainable_params = sum(
+                p.numel() for p in component.parameters() if p.requires_grad)
+            print(f"{name}\t{total_params:,}\t{total_trainable_params:,}")
+
+
 
 
