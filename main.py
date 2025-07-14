@@ -5,7 +5,7 @@ from space_exploration.training.training import ModelTraining
 
 
 def test():
-    training = ModelTraining("C", "re200-sr05etot", "COMPONENT_NORMALIZE", "Y_ALONG_COMPONENT_NORMALIZE", 4)
+    training = ModelTraining("A", "re200-sr05etot", "COMPONENT_NORMALIZE", "Y_ALONG_COMPONENT_NORMALIZE", 4, name="discri:1e-1")
     training.run()
 
 
@@ -64,8 +64,9 @@ def print_stats():
 
 
 if __name__ == '__main__':
+    test()
     # tune_discri()
     # unet_sanity_check()
     # unet_train_test()
     # wall_decoder_check()
-    print_stats()
+    # print_stats()

@@ -20,7 +20,7 @@ def generator_loss(fake_y, y_pred, y_true):
 
     content_loss = F.mse_loss(y_pred, y_true, reduction='mean')
 
-    total_loss = content_loss + 1e-2 * adversarial_loss
+    total_loss = content_loss + 1e-1 * adversarial_loss
     return total_loss
 
 
