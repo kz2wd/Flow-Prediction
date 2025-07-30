@@ -3,6 +3,7 @@ from space_exploration.dataset.transforms.general.component_normalize import Com
 from space_exploration.dataset.transforms.transformer_base import TransformBase
 from scipy.ndimage import gaussian_filter
 import numpy as np
+import dask.array as da
 
 def apply_DoG_batch_on_component(data, component, s1, s2):
     g1 = np.array([gaussian_filter(x, sigma=s1) for x in data[:, component, ...]])
@@ -20,7 +21,7 @@ class ScaleFiltering(TransformBase):
         return ds
 
     def to_training(self, ds):
-        normalized_ds = self.normalizer.to_training(ds)
+        normalized_ds = self.normalizer.to_training(ds).compute()
 
         # Some sigmas chosen from first search
         sigmas = [
@@ -36,4 +37,4 @@ class ScaleFiltering(TransformBase):
 
         extra_comp = np.array(extra_comp).transpose((1, 0, 2, 3, 4))
         enriched_array = np.concatenate([normalized_ds, extra_comp], axis=1)
-        return enriched_array
+        return da.from_array(enriched_array)
