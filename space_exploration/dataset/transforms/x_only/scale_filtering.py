@@ -23,11 +23,26 @@ class ScaleFiltering(TransformBase):
     def to_training(self, ds):
         normalized_ds = self.normalizer.to_training(ds).compute()
 
-        # Some sigmas chosen from first search
+        # Sigmas obtained after performing Bayesian optimisation with Pearson correlation as evaluation for every pair
+        # of input to output component (pressure + shear stress X/Z to U V W: 9 pairs) for every layer except first (63)
+        # (63 x 9 optimisations performed with grid like strategy over 100 samples to find s1 and s2)
+        # Performed clustering to regroup obtained sigmas to 8 values, could be improved more
         sigmas = [
-            [0, (9.60, 24.35)],
-            [1, (19.62, 28.77)],
-            [1, (24.12, 25.92)],
+            [0, (9.172, 26.348)],
+            [0, (5.496, 29.237)],
+            [0, (10.792, 16.214)],
+            [0, (3.810, 23.111)],
+            [0, (5.496, 29.237)],
+            [0, (17.230, 26.774)],
+            [0, (27.775, 29.892)],
+            [0, (28.977, 35.500)],
+            [1, (5.496, 29.237)],
+            [1, (9.172, 26.348)],
+            [1, (28.977, 35.500)],
+            [2, (3.810, 23.111)],
+            [2, (5.496, 29.237)],
+            [2, (9.172, 26.348)],
+            [2, (10.792, 16.214)],
         ]
 
         extra_comp = []

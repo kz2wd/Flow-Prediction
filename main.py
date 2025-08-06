@@ -6,7 +6,7 @@ from space_exploration.training.training import ModelTraining
 
 def test():
     training = ModelTraining("A", "re200-sr05etot", "SCALE_FILTERING",
-                             "Y_ALONG_COMPONENT_NORMALIZE", 8, name="scale_filtering")
+                             "Y_ALONG_COMPONENT_NORMALIZE", 4, name="scale_filtering")
     training.run()
 
 
