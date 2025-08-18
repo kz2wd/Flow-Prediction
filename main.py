@@ -5,8 +5,8 @@ from space_exploration.training.training import ModelTraining
 
 
 def test():
-    training = ModelTraining("D-test", "re200-sr05etot", "SCALE_FILTERING_RENORMALIZED",
-                             "Y_ALONG_COMPONENT_NORMALIZE", 4, name="end-channel-scale_filtering", data_amount=500)
+    training = ModelTraining("D", "re200-sr05etot", "SCALE_FILTERING_RENORMALIZED",
+                             "Y_ALONG_COMPONENT_NORMALIZE", 4, name="end-channel-scale_filtering")
     training.run()
 
 
