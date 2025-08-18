@@ -81,7 +81,8 @@ class ModelTraining:
 
     def _prepare_datasets(self):
         y_dim = self.model.prediction_sub_space.y[1]
-        ds = self.dataset.get_training_dataset(y_dim, self.x_transform_ref.transformation, self.y_transform_ref.transformation, self.data_amount)
+        y_start = self.model.prediction_sub_space.y[0]
+        ds = self.dataset.get_training_dataset(y_dim, self.x_transform_ref.transformation, self.y_transform_ref.transformation, self.data_amount, y_start=y_start)
         self.train_ds, self.val_ds, self.test_ds = get_split_datasets(ds, batch_size=4, val_ratio=0.2, test_ratio=0.05,
                                                  device=self.model.device)
 
