@@ -63,7 +63,7 @@ class DatasetBenchmark:
         offset = 1 if channel.discard_first_y else 0
         y_start = y_base + offset
         y_dimension = channel.get_simulation_channel().y_dimension
-        max_y = ds.shape[3]
+        max_y = ds.shape[3] - offset
         y_dimension = y_dimension[y_start: max_y + y_start]
         y_dimension = y_dimension * channel.y_scale_to_y_plus
 

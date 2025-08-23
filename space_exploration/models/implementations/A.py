@@ -8,7 +8,7 @@ from space_exploration.simulation_channel.PredictionSubSpace import PredictionSu
 
 
 class Generator(nn.Module):
-    def __init__(self, prediction_sub_space: PredictionSubSpace, input_channels=3 + 15, n_residual_blocks=32, output_channels=3):
+    def __init__(self, prediction_sub_space: PredictionSubSpace, input_channels=15, n_residual_blocks=32, output_channels=3):
         super().__init__()
         self.ny = prediction_sub_space.y[1]
 
