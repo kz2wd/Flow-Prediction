@@ -3,12 +3,11 @@ from torch import nn
 
 from space_exploration.models.PaperBase import PaperBase
 from space_exploration.models.utils import ResBlockGen, UpSamplingBlock
-from space_exploration.simulation_channel import SimulationChannel
 from space_exploration.simulation_channel.PredictionSubSpace import PredictionSubSpace
 
 
 class Generator(nn.Module):
-    def __init__(self, prediction_sub_space: PredictionSubSpace, input_channels=15, n_residual_blocks=32, output_channels=3):
+    def __init__(self, prediction_sub_space: PredictionSubSpace, input_channels=18, n_residual_blocks=32, output_channels=3):
         super().__init__()
         self.ny = prediction_sub_space.y[1]
 

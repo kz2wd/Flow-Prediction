@@ -19,7 +19,7 @@ from space_exploration.training.training_utils import get_split_datasets
 
 
 class ModelTraining:
-    def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=8, name=None, bean=None, profile=False):
+    def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=15, name=None, bean=None, profile=False):
         self.profile = profile
         mlflow.set_tracking_uri("http://localhost:5000")
         self.train_patience = train_patience
