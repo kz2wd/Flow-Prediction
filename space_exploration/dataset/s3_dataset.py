@@ -8,7 +8,7 @@ from space_exploration.dataset.transforms.general.default_unchanged import Defau
 
 
 class S3Dataset(Dataset):
-    def __init__(self, ref_bean, x_ds, y_ds, max_y, XTransform: Type = DefaultUnchanged, YTransform: Type = DefaultUnchanged):
+    def __init__(self, ref_bean, x_ds, y_ds, max_y, XTransform: Type = DefaultUnchanged, YTransform: Type = DefaultUnchanged, y_start=0):
         self.ref_bean = ref_bean
         self.x_transform = XTransform(self.ref_bean, "X")
         self.y_transform = YTransform(self.ref_bean, "Y")
@@ -23,7 +23,7 @@ class S3Dataset(Dataset):
         with ProgressBar():
             self.y_ds = self.y_ds.compute()
 
-        self.y = self.y_ds[..., :, :, :max_y, :]  # [B, 3, x, y, z]
+        self.y = self.y_ds[..., :, :, y_start:max_y, :]  # [B, 3, x, y, z]
     def __len__(self):
         return len(self.x)
 

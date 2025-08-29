@@ -45,18 +45,20 @@ class TrainingBenchmark:
             self.training.x_transform_ref.transformation,
             self.training.y_transform_ref.transformation,
             # 250
+            y_start=self.training.model.prediction_sub_space.y[0]
         )
         ds_loader = prepare_dataset(ds, 1)
         prediction = self.training.model.predict(ds_loader)
 
 
         print("Computing Benchmark Data")
-
-        y_start = 1 if self.training.dataset.channel.discard_first_y else 0
+        y_base = self.training.model.prediction_sub_space.y[0]
+        y_start = y_base + 1 if self.training.dataset.channel.discard_first_y else y_base
         y_dimension = self.training.dataset.channel.get_simulation_channel().y_dimension
         max_y = prediction.shape[3]
-        y_dimension = y_dimension[y_start: max_y]
+        y_dimension = y_dimension[y_start: y_start + max_y]
         y_dimension = y_dimension * self.training.dataset.channel.y_scale_to_y_plus
+        print(y_dimension)
 
         target = da.concatenate([y.cpu().numpy() for (x, y) in iter(ds_loader)], axis=0)
 
@@ -122,8 +124,6 @@ class TrainingBenchmark:
                 print(f"Saving {benchmark_name}")
                 s3_access.store_df(pd.DataFrame(treatment(benchmark_name)), self.get_benchmark_storage_name(benchmark_name))
 
-        # s3_access.store_ds(prediction[0], )
-
         print(f"Generating prediction dataset benchmark")
 
 
@@ -145,7 +145,7 @@ class TrainingBenchmark:
 
         real_scale_prediction = self.training.y_transform_ref.transformation(generated_dataset, "Y").from_training(prediction)
 
-        dataset_benchmark._compute_intern(real_scale_prediction, generated_dataset.channel)
+        dataset_benchmark._compute_intern(real_scale_prediction, generated_dataset.channel, y_base=self.training.model.prediction_sub_space.y[0])
 
         self.training.bean.benchmarked = True
         global_session.commit()

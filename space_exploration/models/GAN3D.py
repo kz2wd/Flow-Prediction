@@ -20,7 +20,7 @@ def generator_loss(fake_y, y_pred, y_true):
 
     content_loss = F.mse_loss(y_pred, y_true, reduction='mean')
 
-    total_loss = content_loss + 1e-3 * adversarial_loss
+    total_loss = content_loss + 1e-2 * adversarial_loss
     return total_loss
 
 
@@ -90,8 +90,7 @@ class GAN3D(PredictionModel):
 
             # === Generator forward and loss ===
             y_pred = self.generator(x_target)
-            with torch.no_grad():
-                fake_output_for_gen = self.discriminator(y_pred)
+            fake_output_for_gen = self.discriminator(y_pred)
             gen_loss = self.generator_loss(fake_output_for_gen, y_pred, y_target)
 
             self.generator_optimizer.zero_grad()

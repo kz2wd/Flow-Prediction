@@ -3,6 +3,8 @@ from enum import Enum
 from space_exploration.dataset.transforms.general.component_normalize import ComponentNormalize
 from space_exploration.dataset.transforms.general.default_unchanged import DefaultUnchanged
 from space_exploration.dataset.transforms.x_only.scale_filtering import ScaleFiltering
+from space_exploration.dataset.transforms.x_only.scale_filtering_renormalized import ScaleFilteringRenormalized
+from space_exploration.dataset.transforms.x_only.scale_filtering_renormalized_only import ScaleFilteringRenormalizedOnly
 from space_exploration.dataset.transforms.x_only.unet_adapter import UNetAdapter64
 from space_exploration.dataset.transforms.y_only.y_along_component_normalizer import YAlongComponentNormalizer
 
@@ -23,3 +25,5 @@ class TransformationReferences(TransformationEnumBase):
     COMPONENT_NORMALIZE = ("COMPONENT_NORMALIZE", ComponentNormalize)
     UNET_ADAPTER64 = ("UNET_ADAPTER64", UNetAdapter64)
     SCALE_FILTERING = ("SCALE_FILTERING", ScaleFiltering)
+    SCALE_FILTERING_RENORMALIZED = ("SCALE_FILTERING_RENORMALIZED", ScaleFilteringRenormalized)
+    SCALE_FILTERING_RENORMALIZED_ONLY = ("SCALE_FILTERING_RENORMALIZED_ONLY", ScaleFilteringRenormalizedOnly)

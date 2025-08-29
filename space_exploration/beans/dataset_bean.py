@@ -58,8 +58,8 @@ class Dataset(Base):
             return self.from_dataset.size
         return self.x.shape[0]
 
-    def get_training_dataset(self, max_y, XTransform: Type = DefaultUnchanged, YTransform: Type = DefaultUnchanged, size=-1):
-        s3 = S3Dataset(self, self.x[:size], self.y[:size], max_y, XTransform, YTransform)
+    def get_training_dataset(self, max_y, XTransform: Type = DefaultUnchanged, YTransform: Type = DefaultUnchanged, size=-1, y_start = 0):
+        s3 = S3Dataset(self, self.x[:size], self.y[:size], max_y, XTransform, YTransform, y_start=y_start)
         return s3
 
     def get_dataset_analyzer(self):

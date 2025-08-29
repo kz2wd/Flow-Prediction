@@ -14,7 +14,7 @@ class Discriminator(nn.Module):
     def __init__(self, prediction_sub_space: PredictionSubSpace):
         super().__init__()
         nx = prediction_sub_space.x[1]
-        ny = prediction_sub_space.y[1]
+        ny = prediction_sub_space.y[1] - prediction_sub_space.y[0]
         nz = prediction_sub_space.z[1]
         total_stride = 4 * 2 * 2 * 2
         flatten_size = nx // total_stride * ny // total_stride * nz // total_stride * 512  # each channel gets divided by

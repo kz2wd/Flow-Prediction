@@ -42,7 +42,7 @@ class DatasetBenchmark:
         # ds shape: (Batch, velocity component, x, y, z)
         self._compute_intern(self.dataset.y, self.dataset.channel)
 
-    def _compute_intern(self, ds, channel):
+    def _compute_intern(self, ds, channel, y_base=0):
         ds = ds * self.dataset.scaling
 
         def run_benchmark(internal_ds):
@@ -60,13 +60,14 @@ class DatasetBenchmark:
                 DatasetBenchmarkKeys.REYNOLDS_UV: reynolds_uv,
             }
 
-        y_start = 1 if channel.discard_first_y else 0
+        offset = 1 if channel.discard_first_y else 0
+        y_start = y_base + offset
         y_dimension = channel.get_simulation_channel().y_dimension
-        max_y = ds.shape[3]
-        y_dimension = y_dimension[y_start: max_y]
+        max_y = ds.shape[3] - offset
+        y_dimension = y_dimension[y_start: max_y + y_start]
         y_dimension = y_dimension * channel.y_scale_to_y_plus
 
-        ds = ds[:self.subset_size, :, :, y_start:, :]
+        ds = ds[:self.subset_size, :, :, offset:, :]
 
         benchmark_dict = run_benchmark(ds)
 

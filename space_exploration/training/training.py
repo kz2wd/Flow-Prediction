@@ -19,7 +19,7 @@ from space_exploration.training.training_utils import get_split_datasets
 
 
 class ModelTraining:
-    def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=4, name=None, bean=None, profile=False):
+    def __init__(self, model_name, dataset_name, x_transform_name, y_transform_name, batch_size, data_amount=-1, max_epochs=50, saving_freq=3, train_patience=15, name=None, bean=None, profile=False):
         self.profile = profile
         mlflow.set_tracking_uri("http://localhost:5000")
         self.train_patience = train_patience
@@ -81,7 +81,8 @@ class ModelTraining:
 
     def _prepare_datasets(self):
         y_dim = self.model.prediction_sub_space.y[1]
-        ds = self.dataset.get_training_dataset(y_dim, self.x_transform_ref.transformation, self.y_transform_ref.transformation, self.data_amount)
+        y_start = self.model.prediction_sub_space.y[0]
+        ds = self.dataset.get_training_dataset(y_dim, self.x_transform_ref.transformation, self.y_transform_ref.transformation, self.data_amount, y_start=y_start)
         self.train_ds, self.val_ds, self.test_ds = get_split_datasets(ds, batch_size=4, val_ratio=0.2, test_ratio=0.05,
                                                  device=self.model.device)
 
@@ -109,6 +110,8 @@ class ModelTraining:
             "max_epochs": self.max_epochs,
             "model_name": self.model.name,
         })
+
+        min_epoch = 20
 
         start_time = time.time()
         for epoch in range(1, self.max_epochs + 1):
@@ -142,7 +145,7 @@ class ModelTraining:
                 patience_counter = 0
                 self.model.save(epoch, self.best_ckpt)
                 print(f"Saving best model at epoch {epoch}...")
-            else:
+            elif epoch > min_epoch:
                 patience_counter += 1
                 print(f"  [EarlyStopping] Patience {patience_counter}/{self.train_patience}")
                 if patience_counter >= self.train_patience:
